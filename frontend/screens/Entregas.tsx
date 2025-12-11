@@ -1,203 +1,247 @@
+// src/screens/EntregasScreen.tsx
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, Alert } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { styles } from '../styles/global';
+import { 
+  View, 
+  Text, 
+  FlatList, 
+  ActivityIndicator, 
+  TouchableOpacity,
+  ScrollView
+} from 'react-native';
+import { styles } from '../styles/global'; 
+import { ScreenProps, Entrega, Materia } from '../types'; 
+import { getMisEntregas, getMisMaterias, getEntregasTarea } from '../api'; 
+import { useAuth } from '../context/AuthContext'; 
 import Card from '../components/Card';
 import Button from '../components/Button';
-import Input from '../components/Input';
-import Loading from '../components/Loading';
-import { 
-  getMisEntregas, 
-  getEntregasTarea, 
-  calificarEntrega,
-  getMisMaterias 
-} from '../api';
-import { ScreenProps, User, Entrega, Materia } from '../types';
 
-const EntregasScreen: React.FC<ScreenProps> = ({ route }) => {  // <-- Solo route
-  const params = route?.params || {};
-  const { tipo = 'mis-entregas', tareaId } = params;
+// Función helper para asegurar strings
+const ensureString = (value: any): string => {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number') return value.toString();
+  if (typeof value === 'boolean') return value ? 'true' : 'false';
+  return String(value);
+};
+
+const EntregasScreen: React.FC<ScreenProps<'Entregas'>> = ({ navigation, route }) => {
+  const { user, loading: authLoading } = useAuth();
   
-  const tareaIdString = tareaId?.toString() || '';
+  const { tareaId } = route.params || {}; 
   
-  const [user, setUser] = useState<User | null>(null);
+  const isProfesor = user?.rol === 'profesor';
+
   const [entregas, setEntregas] = useState<Entrega[]>([]);
   const [materias, setMaterias] = useState<Materia[]>([]);
-  const [materiaSeleccionada, setMateriaSeleccionada] = useState<string>('');
-  const [calificando, setCalificando] = useState<number | null>(null);
-  const [calificacion, setCalificacion] = useState<string>('');
-  const [comentario, setComentario] = useState<string>('');
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  const [selectedMateriaId, setSelectedMateriaId] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadUser();
-  }, []);
+  const loadMaterias = useCallback(async () => {
+    if (authLoading) return;
 
-  const loadData = useCallback(async (): Promise<void> => {
-    setLoading(true);
-    
-    if (tipo === 'mis-entregas') {
-      const result = await getMisEntregas();
-      if (result.success && result.entregas) {
-        setEntregas(result.entregas);
-      }
-    } else if (user?.rol === 'profesor') {
-      if (materiaSeleccionada) {
-        const result = await getEntregasTarea(parseInt(materiaSeleccionada));
-        if (result.success && result.entregas) {
-          setEntregas(result.entregas);
-        }
-      }
+    const result = await getMisMaterias();
+    if (result.success && result.materias) {
+      setMaterias(result.materias);
       
-      const materiasResult = await getMisMaterias();
-      if (materiasResult.success && materiasResult.materias) {
-        setMaterias(materiasResult.materias);
-        if (materiasResult.materias.length > 0 && !materiaSeleccionada) {
-          setMateriaSeleccionada(materiasResult.materias[0].id.toString());
-        }
+      if (isProfesor && !tareaId && result.materias.length > 0 && selectedMateriaId === null) {
+        setSelectedMateriaId(result.materias[0].id.toString());
       }
+    } else {
+      setError(result.message || 'Error al cargar las materias. ¿Token expirado?');
     }
-    
+  }, [isProfesor, authLoading, selectedMateriaId, tareaId]);
+
+  const loadEntregas = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    let result;
+
+    if (isProfesor) {
+      if (tareaId) {
+        result = await getEntregasTarea(tareaId);
+      } else {
+        result = await getMisEntregas(); 
+      }
+    } else {
+      result = await getMisEntregas();
+    }
+
+    if (result.success && result.entregas) {
+      setEntregas(result.entregas);
+    } else {
+      setError(result.message || 'Error al cargar las entregas.');
+    }
     setLoading(false);
-  }, [tipo, user, materiaSeleccionada]);
+  }, [isProfesor, tareaId]);
 
   useEffect(() => {
-    if (user) {
-      loadData();
-    }
-  }, [tareaIdString, materiaSeleccionada, user, tipo, loadData]);
+    loadMaterias();
+  }, [loadMaterias]);
 
-  const loadUser = async (): Promise<void> => {
-    const userJson = await AsyncStorage.getItem('user');
-    if (userJson) {
-      setUser(JSON.parse(userJson));
+  useEffect(() => {
+    if (!isProfesor || tareaId || (selectedMateriaId !== null && materias.length > 0)) {
+      loadEntregas();
     }
-  };
+  }, [loadEntregas, isProfesor, tareaId, selectedMateriaId, materias.length]);
 
-  const handleCalificar = async (entregaId: number): Promise<void> => {
-    const calificacionNum = parseFloat(calificacion);
-    if (!calificacion || isNaN(calificacionNum) || calificacionNum < 0 || calificacionNum > 10) {
-      Alert.alert('Error', 'Ingresa una calificación válida (0-10)');
-      return;
-    }
+  const filteredEntregas = entregas.filter(e => {
+    if (!selectedMateriaId || tareaId) return true;
+    return e.materia_id.toString() === selectedMateriaId;
+  });
 
-    const result = await calificarEntrega(
-      entregaId,
-      calificacionNum,
-      comentario
+  const renderEntregaItem = ({ item }: { item: Entrega }) => {
+    const isCalificada = item.calificacion !== null && item.calificacion !== undefined;
+    
+    const getBadgeStyle = () => {
+      if (isCalificada) {
+        return [styles.badge, styles.badgeSuccess];
+      } else if (isProfesor) {
+        return [styles.badge, styles.badgeWarning];
+      } else {
+        return [styles.badge, styles.badgeInfo];
+      }
+    };
+
+    const getBadgeText = () => {
+      if (isCalificada) {
+        return `Calificada: ${ensureString(item.calificacion)}`;
+      } else if (isProfesor) {
+        return 'Pendiente';
+      } else {
+        return 'Enviada';
+      }
+    };
+
+    return (
+      <Card 
+        key={item.id}
+        style={styles.card}
+        onPress={() => navigation.navigate('DetalleEntrega', { entregaId: item.id })} 
+      >
+        <View style={[styles.horizontalLayout, styles.justifyContentBetween]}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.cardTitle}>{ensureString(item.titulo) || 'Tarea Sin Título'}</Text>
+            <View style={styles.marginTop5}>
+              <Text style={styles.cardText}>{ensureString(item.materia_nombre)}</Text>
+            </View>
+          </View>
+          <View style={getBadgeStyle()}>
+            <Text style={styles.buttonText}>{getBadgeText()}</Text>
+          </View>
+        </View>
+        
+        {isProfesor && item.estudiante_nombre && (
+          <View style={styles.marginTop10}>
+            <Text style={styles.cardText}>
+              Estudiante: <Text style={{ fontWeight: '600' }}>{ensureString(item.estudiante_nombre)}</Text>
+            </Text>
+          </View>
+        )}
+
+        <View style={styles.marginTop10}>
+          <Text style={[styles.cardText, { fontSize: 12 }]}>
+            Entregado: {item.fecha_entrega ? new Date(item.fecha_entrega).toLocaleDateString() : 'Fecha no disponible'}
+          </Text>
+        </View>
+        
+        {isProfesor && !isCalificada && (
+          <View style={styles.marginTop10}>
+            <Button 
+              title="Calificar" 
+              onPress={() => navigation.navigate('CalificarEntrega', { entregaId: item.id })}
+              style={styles.smallButton}
+            />
+          </View>
+        )}
+      </Card>
     );
-
-    if (result.success) {
-      Alert.alert('Éxito', 'Entrega calificada');
-      setCalificando(null);
-      setCalificacion('');
-      setComentario('');
-      loadData();
-    } else {
-      Alert.alert('Error', result.message);
-    }
   };
 
-  if (loading || !user) {
-    return <Loading message="Cargando entregas..." />;
+  if (authLoading) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color="#3498db" />
+        <View style={styles.marginTop10}>
+          <Text style={styles.text}>Cargando usuario...</Text>
+        </View>
+      </View>
+    );
   }
 
+  if (loading) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color="#3498db" />
+        <View style={styles.marginTop10}>
+          <Text style={styles.text}>Cargando entregas...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.centerContainer}>
+        <View style={styles.marginBottom20}>
+          <Text style={styles.errorText}>Error: {error}</Text>
+        </View>
+        <Button title="Reintentar" onPress={loadEntregas} />
+      </View>
+    );
+  }
+
+  const title = isProfesor 
+    ? (tareaId ? 'Entregas de Tarea' : 'Entregas Pendientes')
+    : 'Mis Entregas';
+    
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.title}>
-        {tipo === 'mis-entregas' ? 'Mis Entregas' : 'Entregas Pendientes'}
-      </Text>
+    <View style={styles.container}>
+      <Text style={styles.title}>{title}</Text>
 
-      {user.rol === 'profesor' && tipo !== 'mis-entregas' && (
-        <Card title="Seleccionar tarea para calificar">
-          {materias.length === 0 ? (
-            <Text style={styles.text}>No tienes materias asignadas</Text>
-          ) : (
-            <View style={styles.row}>
-              {materias.map((materia) => (
-                <Button
-                  key={materia.id}
-                  title={materia.nombre}
-                  onPress={() => setMateriaSeleccionada(materia.id.toString())}
-                  type={materiaSeleccionada === materia.id.toString() ? 'primary' : 'secondary'}
-                  style={{ marginRight: 10, marginBottom: 10 }}
-                />
-              ))}
-            </View>
-          )}
-        </Card>
+      {isProfesor && !tareaId && materias.length > 0 && (
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          style={{ marginBottom: 15 }}
+        >
+          {materias.map(materia => {
+            const isSelected = materia.id.toString() === selectedMateriaId;
+            
+            return (
+              <TouchableOpacity
+                key={materia.id}
+                onPress={() => setSelectedMateriaId(materia.id.toString())}
+                style={[
+                  styles.materiaFilterButton,
+                  isSelected ? styles.materiaFilterButtonSelected : styles.materiaFilterButtonUnselected
+                ]}
+              >
+                <Text style={styles.buttonText}>{ensureString(materia.nombre)}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       )}
 
-      {entregas.length === 0 ? (
-        <Text style={[styles.text, styles.textCenter, styles.mt20]}>
-          {tipo === 'mis-entregas' ? 'No has entregado tareas' : 'No hay entregas pendientes'}
-        </Text>
+      {filteredEntregas.length === 0 ? (
+        <View style={styles.textContainerWithMargin}>
+          <Text style={styles.noDataText}>
+            No hay entregas {isProfesor ? 'pendientes de calificar' : 'enviadas'} {selectedMateriaId ? 'para la materia seleccionada.' : '.'}
+          </Text>
+        </View>
       ) : (
-        entregas.map((entrega) => (
-          <Card
-            key={entrega.id}
-            title={`${entrega.titulo || 'Tarea'} - ${entrega.estudiante_nombre || 'Estudiante'}`}
-            description={`Contenido: ${entrega.contenido || 'Sin contenido'}\nFecha: ${entrega.fecha_entrega}`}
-          >
-            {entrega.calificacion ? (
-              <View>
-                <Text style={[styles.text, { color: '#27ae60' }]}>
-                  Calificación: {entrega.calificacion}/10
-                </Text>
-                {entrega.comentario_profesor && (
-                  <Text style={[styles.text, styles.mt20]}>
-                    Comentario: {entrega.comentario_profesor}
-                  </Text>
-                )}
-              </View>
-            ) : user.rol === 'profesor' && tipo !== 'mis-entregas' ? (
-              <View>
-                {calificando === entrega.id ? (
-                  <View>
-                    <Input
-                      label="Calificación (0-10)"
-                      value={calificacion}
-                      onChangeText={setCalificacion}
-                      placeholder="Ej: 8.5"
-                      keyboardType="numeric"
-                    />
-                    <Input
-                      label="Comentario (opcional)"
-                      value={comentario}
-                      onChangeText={setComentario}
-                      placeholder="Retroalimentación..."
-                      multiline
-                    />
-                    <View style={styles.row}>
-                      <Button
-                        title="Cancelar"
-                        onPress={() => setCalificando(null)}
-                        type="secondary"
-                        style={{ flex: 1, marginRight: 10 }}
-                      />
-                      <Button
-                        title="Calificar"
-                        onPress={() => handleCalificar(entrega.id)}
-                        style={{ flex: 1, marginLeft: 10 }}
-                      />
-                    </View>
-                  </View>
-                ) : (
-                  <Button
-                    title="Calificar entrega"
-                    onPress={() => setCalificando(entrega.id)}
-                  />
-                )}
-              </View>
-            ) : (
-              <Text style={[styles.text, { color: '#e67e22' }]}>
-                Calificación pendiente
-              </Text>
-            )}
-          </Card>
-        ))
+        <FlatList
+          data={filteredEntregas}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={renderEntregaItem}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 20 }}
+        />
       )}
-    </ScrollView>
+    </View>
   );
 };
 

@@ -1,89 +1,117 @@
+// src/api.ts
 import axios, { AxiosInstance } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {
-  AuthResponse,
+import { 
+  LoginCredentials, 
+  RegisterData, 
+  User, 
+  AuthResponse, 
   MateriaResponse,
+  MateriaData,
+  TareaData,
   TareaResponse,
+  EntregaData,
   EntregaResponse,
+  ComentarioData,
   ComentarioResponse,
-  User,
-  Materia,
-  Tarea,
-  Entrega,
-  Comentario
-} from './types';
+  SimpleResponse,
+  IdResponse
+} from './types'; 
 
-const API_URL = 'http://10.0.2.2:3000';
+// --- CONFIGURACIÓN DE AXIOS ---
+const API_URL = 'http://10.0.2.2:3000'; 
 
 const api: AxiosInstance = axios.create({
   baseURL: API_URL,
-  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
-// Interceptor para token
-api.interceptors.request.use(async (config) => {
-  const token = await AsyncStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-// Auth
-export const login = async (email: string, password: string): Promise<AuthResponse> => {
+// Función central para limpiar el estado de la sesión local
+export const logoutUser = async (): Promise<void> => { 
   try {
-    const response = await api.post<AuthResponse>('/login', {
-      email,
-      contrasena: password,
-    });
+    // Opcional: Llamada al backend para invalidar el token
+    // await api.post('/logout');
+  } catch (error) {
+    console.warn("Logout API call failed, but clearing local storage.", error);
+  }
+  await AsyncStorage.removeItem('token');
+  await AsyncStorage.removeItem('user');
+};
+
+// Interceptor 1: Inyectar el token JWT
+api.interceptors.request.use(
+  async (config) => {
+    const token = await AsyncStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Interceptor 2: Manejar errores de autenticación (401/403)
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const status = error.response?.status;
+    
+    if (status === 401 || status === 403) {
+      console.warn("Auth Error (401/403) detected. Forcing local logout.");
+      await logoutUser(); 
+    }
+    return Promise.reject(error);
+  }
+);
+
+// Helper para manejar errores de API
+function handleError(error: any): { success: false, message: string } {
+  console.error("API Error:", error.response?.data || error.message);
+  return { 
+    success: false, 
+    message: error.response?.data?.message || 'Error de conexión' 
+  };
+}
+
+// --- FUNCIONES DE AUTENTICACIÓN ---
+export const registerUser = async (data: RegisterData): Promise<AuthResponse> => {
+  try {
+    const response = await api.post<AuthResponse>('/register', data);
+    return response.data;
+  } catch (error) {
+    return handleError(error);
+  }
+};
+
+export const loginUser = async (credentials: LoginCredentials): Promise<AuthResponse> => {
+  try {
+    const response = await api.post<AuthResponse>('/login', credentials);
     if (response.data.success && response.data.token && response.data.user) {
       await AsyncStorage.setItem('token', response.data.token);
       await AsyncStorage.setItem('user', JSON.stringify(response.data.user));
     }
     return response.data;
-  } catch (error: any) {
-    console.error('Login error:', error);
-    return { 
-      success: false, 
-      message: error.response?.data?.message || 'Error de conexión' 
-    };
+  } catch (error) {
+    return handleError(error);
   }
 };
 
-export const register = async (userData: {
-  nombre: string;
-  email: string;
-  contrasena: string;
-  rol: 'estudiante' | 'profesor';
-}): Promise<AuthResponse> => {
-  try {
-    const response = await api.post<AuthResponse>('/register', userData);
-    return response.data;
-  } catch (error: any) {
-    console.error('Register error:', error);
-    return { 
-      success: false, 
-      message: error.response?.data?.message || 'Error de conexión' 
-    };
-  }
+export const getCurrentUser = async (): Promise<User | null> => {
+  const userJson = await AsyncStorage.getItem('user');
+  return userJson ? JSON.parse(userJson) : null;
 };
 
-export const logout = async (): Promise<void> => {
-  await AsyncStorage.removeItem('token');
-  await AsyncStorage.removeItem('user');
-};
-
-// Materias
+// --- FUNCIONES DE MATERIAS ---
 export const getMaterias = async (): Promise<MateriaResponse> => {
   try {
     const response = await api.get<MateriaResponse>('/materias');
     return response.data;
-  } catch (error: any) {
-    console.error('Get materias error:', error);
-    return { 
-      success: false, 
-      message: 'Error al cargar materias' 
-    };
+  } catch (error) {
+    return handleError(error);
   }
 };
 
@@ -91,12 +119,8 @@ export const getMisMaterias = async (): Promise<MateriaResponse> => {
   try {
     const response = await api.get<MateriaResponse>('/mi/materias');
     return response.data;
-  } catch (error: any) {
-    console.error('Get mis materias error:', error);
-    return { 
-      success: false, 
-      message: 'Error al cargar mis materias' 
-    };
+  } catch (error) {
+    return handleError(error);
   }
 };
 
@@ -104,153 +128,128 @@ export const getMateriaById = async (id: number): Promise<MateriaResponse> => {
   try {
     const response = await api.get<MateriaResponse>(`/materias/${id}`);
     return response.data;
-  } catch (error: any) {
-    console.error('Get materia error:', error);
-    return { 
-      success: false, 
-      message: 'Error al cargar materia' 
-    };
+  } catch (error) {
+    return handleError(error);
   }
 };
 
-export const crearMateria = async (materiaData: {
-  nombre: string;
-  descripcion?: string;
-  codigo?: string;
-}): Promise<{ success: boolean; message?: string }> => {
+export const createMateria = async (data: MateriaData): Promise<IdResponse> => {
   try {
-    const response = await api.post<{ success: boolean; message?: string }>('/materias', materiaData);
+    const response = await api.post<IdResponse>('/materias', data);
     return response.data;
-  } catch (error: any) {
-    console.error('Create materia error:', error);
-    return { 
-      success: false, 
-      message: error.response?.data?.message || 'Error al crear materia' 
-    };
+  } catch (error) {
+    return handleError(error);
   }
 };
 
-export const inscribirseMateria = async (materia_id: number): Promise<{ success: boolean; message?: string }> => {
+export const updateMateria = async (id: number, data: Partial<MateriaData>): Promise<SimpleResponse> => {
   try {
-    const response = await api.post<{ success: boolean; message?: string }>('/inscripciones', { materia_id });
+    const response = await api.put<SimpleResponse>(`/materias/${id}`, data);
     return response.data;
-  } catch (error: any) {
-    console.error('Inscribirse error:', error);
-    return { 
-      success: false, 
-      message: error.response?.data?.message || 'Error al inscribirse' 
-    };
+  } catch (error) {
+    return handleError(error);
   }
 };
 
-export const eliminarMateria = async (materia_id: number): Promise<{ success: boolean; message?: string }> => {
+export const deleteMateria = async (id: number): Promise<SimpleResponse> => {
   try {
-    const response = await api.delete<{ success: boolean; message?: string }>(`/materias/${materia_id}`);
+    const response = await api.delete<SimpleResponse>(`/materias/${id}`);
     return response.data;
-  } catch (error: any) {
-    console.error('Delete materia error:', error);
-    return { 
-      success: false, 
-      message: 'Error al eliminar materia' 
-    };
+  } catch (error) {
+    return handleError(error);
   }
 };
 
-// Tareas
-export const getTareas = async (materia_id: number): Promise<TareaResponse> => {
+export const inscribirseMateria = async (materia_id: number): Promise<SimpleResponse> => {
   try {
-    const response = await api.get<TareaResponse>(`/materias/${materia_id}/tareas`);
+    const response = await api.post<SimpleResponse>('/inscripciones', { materia_id });
     return response.data;
-  } catch (error: any) {
-    console.error('Get tareas error:', error);
-    return { 
-      success: false, 
-      message: 'Error al cargar tareas' 
-    };
+  } catch (error) {
+    return handleError(error);
   }
 };
 
-export const crearTarea = async (tareaData: {
-  materia_id: number;
-  titulo: string;
-  descripcion?: string;
-  fecha_entrega?: string;
-}): Promise<{ success: boolean; message?: string }> => {
+export const salirMateria = async (materia_id: number): Promise<SimpleResponse> => {
   try {
-    const response = await api.post<{ success: boolean; message?: string }>('/tareas', tareaData);
+    const response = await api.delete<SimpleResponse>(`/inscripciones/${materia_id}`);
     return response.data;
-  } catch (error: any) {
-    console.error('Create tarea error:', error);
-    return { 
-      success: false, 
-      message: error.response?.data?.message || 'Error al crear tarea' 
-    };
+  } catch (error) {
+    return handleError(error);
   }
 };
 
-export const eliminarTarea = async (tarea_id: number): Promise<{ success: boolean; message?: string }> => {
+// --- FUNCIONES DE TAREAS ---
+export const getTareasByMateria = async (materiaId: number): Promise<TareaResponse> => {
   try {
-    const response = await api.delete<{ success: boolean; message?: string }>(`/tareas/${tarea_id}`);
+    const response = await api.get<TareaResponse>(`/materias/${materiaId}/tareas`);
     return response.data;
-  } catch (error: any) {
-    console.error('Delete tarea error:', error);
-    return { 
-      success: false, 
-      message: 'Error al eliminar tarea' 
-    };
+  } catch (error) {
+    return handleError(error);
   }
 };
 
-// Entregas
-export const entregarTarea = async (tarea_id: number, contenido: string): Promise<{ success: boolean; message?: string }> => {
+export const getTareas = getTareasByMateria; // Alias para compatibilidad
+
+export const getTareaById = async (id: number): Promise<TareaResponse> => {
   try {
-    const response = await api.post<{ success: boolean; message?: string }>('/entregas', {
-      tarea_id,
-      contenido,
+    const response = await api.get<TareaResponse>(`/tareas/${id}`);
+    return response.data;
+  } catch (error) {
+    return handleError(error);
+  }
+};
+
+export const createTarea = async (data: TareaData): Promise<IdResponse> => {
+  try {
+    const response = await api.post<IdResponse>('/tareas', data);
+    return response.data;
+  } catch (error) {
+    return handleError(error);
+  }
+};
+
+export const updateTarea = async (id: number, data: Partial<TareaData>): Promise<SimpleResponse> => {
+  try {
+    const response = await api.put<SimpleResponse>(`/tareas/${id}`, data);
+    return response.data;
+  } catch (error) {
+    return handleError(error);
+  }
+};
+
+export const eliminarTarea = async (id: number): Promise<SimpleResponse> => {
+  try {
+    const response = await api.delete<SimpleResponse>(`/tareas/${id}`);
+    return response.data;
+  } catch (error) {
+    return handleError(error);
+  }
+};
+
+export const deleteTarea = eliminarTarea; // Alias para compatibilidad
+
+// --- FUNCIONES DE ENTREGAS ---
+export const entregarTarea = async (tareaId: number, contenido: string): Promise<SimpleResponse> => {
+  try {
+    const response = await api.post<SimpleResponse>('/entregas', {
+      tarea_id: tareaId,
+      contenido: contenido
     });
     return response.data;
   } catch (error: any) {
-    console.error('Entregar tarea error:', error);
-    return { 
-      success: false, 
-      message: error.response?.data?.message || 'Error al entregar' 
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Error al entregar la tarea'
     };
   }
 };
 
-export const getEntregasTarea = async (tarea_id: number): Promise<EntregaResponse> => {
+export const createEntrega = async (data: EntregaData): Promise<IdResponse> => {
   try {
-    const response = await api.get<EntregaResponse>(`/tareas/${tarea_id}/entregas`);
+    const response = await api.post<IdResponse>('/entregas', data);
     return response.data;
-  } catch (error: any) {
-    console.error('Get entregas error:', error);
-    return { 
-      success: false, 
-      message: 'Error al cargar entregas' 
-    };
-  }
-};
-
-export const calificarEntrega = async (
-  entrega_id: number, 
-  calificacion: number, 
-  comentario?: string
-): Promise<{ success: boolean; message?: string }> => {
-  try {
-    const response = await api.put<{ success: boolean; message?: string }>(
-      `/entregas/${entrega_id}/calificar`, 
-      {
-        calificacion,
-        comentario_profesor: comentario,
-      }
-    );
-    return response.data;
-  } catch (error: any) {
-    console.error('Calificar error:', error);
-    return { 
-      success: false, 
-      message: error.response?.data?.message || 'Error al calificar' 
-    };
+  } catch (error) {
+    return handleError(error);
   }
 };
 
@@ -258,54 +257,93 @@ export const getMisEntregas = async (): Promise<EntregaResponse> => {
   try {
     const response = await api.get<EntregaResponse>('/mi/entregas');
     return response.data;
-  } catch (error: any) {
-    console.error('Get mis entregas error:', error);
-    return { 
-      success: false, 
-      message: 'Error al cargar entregas' 
-    };
+  } catch (error) {
+    return handleError(error);
   }
 };
 
-// Comentarios
-export const getComentarios = async (tarea_id: number): Promise<ComentarioResponse> => {
+export const getEntregasTarea = async (tareaId: number): Promise<EntregaResponse> => {
   try {
-    const response = await api.get<ComentarioResponse>(`/tareas/${tarea_id}/comentarios`);
+    const response = await api.get<EntregaResponse>(`/tareas/${tareaId}/entregas`);
     return response.data;
-  } catch (error: any) {
-    console.error('Get comentarios error:', error);
-    return { 
-      success: false, 
-      message: 'Error al cargar comentarios' 
-    };
+  } catch (error) {
+    return handleError(error);
   }
 };
 
-export const crearComentario = async (tarea_id: number, comentario: string): Promise<{ success: boolean; message?: string }> => {
+export const getEntregaById = async (id: number): Promise<EntregaResponse> => {
   try {
-    const response = await api.post<{ success: boolean; message?: string }>(
-      `/tareas/${tarea_id}/comentarios`, 
-      { comentario }
-    );
+    const response = await api.get<EntregaResponse>(`/entregas/${id}`);
     return response.data;
-  } catch (error: any) {
-    console.error('Create comentario error:', error);
-    return { 
-      success: false, 
-      message: error.response?.data?.message || 'Error al crear comentario' 
-    };
+  } catch (error) {
+    return handleError(error);
   }
 };
 
-export const eliminarComentario = async (comentario_id: number): Promise<{ success: boolean; message?: string }> => {
+export const calificarEntrega = async (
+  entregaId: number, 
+  calificacion: number, 
+  comentario: string 
+): Promise<SimpleResponse> => {
   try {
-    const response = await api.delete<{ success: boolean; message?: string }>(`/comentarios/${comentario_id}`);
+    const data = { calificacion, comentario_profesor: comentario };
+    const response = await api.put<SimpleResponse>(`/entregas/${entregaId}/calificar`, data);
     return response.data;
-  } catch (error: any) {
-    console.error('Delete comentario error:', error);
-    return { 
-      success: false, 
-      message: error.response?.data?.message || 'Error al eliminar comentario' 
-    };
+  } catch (error) {
+    return handleError(error);
+  }
+};
+
+// --- FUNCIONES DE COMENTARIOS ---
+export const getComentariosByTarea = async (tareaId: number): Promise<ComentarioResponse> => {
+  try {
+    const response = await api.get<ComentarioResponse>(`/tareas/${tareaId}/comentarios`);
+    return response.data;
+  } catch (error) {
+    return handleError(error);
+  }
+};
+
+export const getComentarios = getComentariosByTarea; // Alias para compatibilidad
+
+export const createComentario = async (
+  tareaId: number, 
+  data: ComentarioData
+): Promise<IdResponse> => {
+  try {
+    const response = await api.post<IdResponse>(`/tareas/${tareaId}/comentarios`, data);
+    return response.data;
+  } catch (error) {
+    return handleError(error);
+  }
+};
+
+export const eliminarComentario = async (id: number): Promise<SimpleResponse> => {
+  try {
+    const response = await api.delete<SimpleResponse>(`/comentarios/${id}`);
+    return response.data;
+  } catch (error) {
+    return handleError(error);
+  }
+};
+
+export const deleteComentario = eliminarComentario; // Alias para compatibilidad
+
+// --- FUNCIONES ADICIONALES ---
+export const getTodasTareas = async (): Promise<TareaResponse> => {
+  try {
+    const response = await api.get<TareaResponse>('/tareas');
+    return response.data;
+  } catch (error) {
+    return handleError(error);
+  }
+};
+
+export const getUserById = async (id: number): Promise<AuthResponse> => {
+  try {
+    const response = await api.get<AuthResponse>(`/users/${id}`);
+    return response.data;
+  } catch (error) {
+    return handleError(error);
   }
 };

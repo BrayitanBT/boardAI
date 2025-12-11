@@ -1,9 +1,10 @@
+// screens/Register.tsx
 import React, { useState } from 'react';
 import { View, Text, ScrollView} from 'react-native';
 import { styles } from '../styles/global';
 import Input from '../components/Input';
 import Button from '../components/Button';
-import { register } from '../api';
+import { registerUser } from '../api';
 import { RegisterScreenProps } from '../types';
 
 const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
@@ -21,31 +22,52 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
       return;
     }
 
+    // Validación de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError('Por favor ingresa un email válido');
+      return;
+    }
+
+    // Validación de contraseña
+    if (password.length < 6) {
+      setError('La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+
     setLoading(true);
     setError('');
     setSuccess('');
 
-    const result = await register({
-      nombre,
-      email,
-      contrasena: password,
-      rol
-    });
-    
-    if (result.success) {
-      setSuccess('¡Registro exitoso! Ahora puedes iniciar sesión');
-      setTimeout(() => {
-        navigation.navigate('Login');
-      }, 2000);
-    } else {
-      setError(result.message || 'Error al registrarse');
+    try {
+      const result = await registerUser({
+        nombre,
+        email,
+        contrasena: password,
+        rol
+      });
+      
+      if (result.success) {
+        setSuccess('¡Registro exitoso! Ahora puedes iniciar sesión');
+        setTimeout(() => {
+          navigation.navigate('Login');
+        }, 2000);
+      } else {
+        setError(result.message || 'Error al registrarse');
+      }
+    } catch {
+      setError('Error de conexión. Por favor intenta de nuevo');
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView 
+      style={styles.container}
+      contentContainerStyle={styles.scrollContent}
+      keyboardShouldPersistTaps="handled"
+    >
       <Text style={styles.title}>Crear Cuenta</Text>
       <Text style={styles.subtitle}>Regístrate como estudiante o profesor</Text>
 
@@ -88,34 +110,38 @@ const RegisterScreen: React.FC<RegisterScreenProps> = ({ navigation }) => {
 
       <View style={styles.inputContainer}>
         <Text style={styles.inputLabel}>Rol</Text>
-        <View style={[styles.row, styles.spaceBetween, styles.mt20]}>
+        <View style={[styles.horizontalLayout, styles.justifyContentBetween, styles.marginTop20]}>
           <Button
             title="Estudiante"
             onPress={() => setRol('estudiante')}
             type={rol === 'estudiante' ? 'primary' : 'secondary'}
-            style={{ flex: 1, marginRight: 10 }}
+            style={{ flex: 1, marginRight: 5 }}
           />
           <Button
             title="Profesor"
             onPress={() => setRol('profesor')}
             type={rol === 'profesor' ? 'primary' : 'secondary'}
-            style={{ flex: 1, marginLeft: 10 }}
+            style={{ flex: 1, marginLeft: 5 }}
           />
         </View>
       </View>
 
-      <Button
-        title="Registrarse"
-        onPress={handleRegister}
-        loading={loading}
-        disabled={!!success}
-      />
+      <View style={styles.marginVertical10}>
+        <Button
+          title="Registrarse"
+          onPress={handleRegister}
+          loading={loading}
+          disabled={!!success}
+        />
+      </View>
 
-      <Button
-        title="Ya tengo cuenta"
-        onPress={() => navigation.navigate('Login')}
-        type="secondary"
-      />
+      <View style={styles.marginTop20}>
+        <Button
+          title="Ya tengo cuenta"
+          onPress={() => navigation.navigate('Login')}
+          type="secondary"
+        />
+      </View>
     </ScrollView>
   );
 };

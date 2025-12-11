@@ -11,14 +11,17 @@ import { styles } from '../styles/global';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Loading from '../components/Loading';
-import { logout, getMaterias, getMisEntregas } from '../api';
-import { ScreenProps, User, Materia, Entrega } from '../types';
+import { getMaterias, getMisEntregas } from '../api';
+import { HomeScreenProps, User, Materia, Entrega } from '../types';
+import { useAuth } from '../context/AuthContext';
 
-const HomeScreen: React.FC<ScreenProps> = ({ navigation }) => {
+const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const [user, setUser] = useState<User | null>(null);
   const [materias, setMaterias] = useState<Materia[]>([]);
   const [entregas, setEntregas] = useState<Entrega[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  
+  const { signOut } = useAuth(); 
 
   useEffect(() => {
     loadUser();
@@ -35,11 +38,13 @@ const HomeScreen: React.FC<ScreenProps> = ({ navigation }) => {
   const loadData = async (): Promise<void> => {
     setLoading(true);
     
+    // Cargar materias
     const materiasResult = await getMaterias();
     if (materiasResult.success && materiasResult.materias) {
       setMaterias(materiasResult.materias);
     }
 
+    // Cargar entregas si es estudiante
     if (user?.rol === 'estudiante') {
       const entregasResult = await getMisEntregas();
       if (entregasResult.success && entregasResult.entregas) {
@@ -60,8 +65,7 @@ const HomeScreen: React.FC<ScreenProps> = ({ navigation }) => {
           text: 'Salir', 
           style: 'destructive',
           onPress: async () => {
-            await logout();
-            navigation.replace('Login');
+            await signOut();
           }
         }
       ]
@@ -78,9 +82,9 @@ const HomeScreen: React.FC<ScreenProps> = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={[styles.row, styles.spaceBetween, styles.mb10]}>
-        <TouchableOpacity onPress={navigateToProfile} style={styles.row}>
+      {/* Header - CORREGIDO */}
+      <View style={[styles.horizontalLayout, styles.justifyContentBetween, styles.marginBottom20]}>
+        <TouchableOpacity onPress={navigateToProfile} style={styles.horizontalLayout}>
           <View style={[
             styles.avatarContainer,
             user.rol === 'profesor' && styles.avatarProfesor
@@ -90,10 +94,10 @@ const HomeScreen: React.FC<ScreenProps> = ({ navigation }) => {
             </Text>
           </View>
           <View>
-            <Text style={styles.title}>
+            <Text style={styles.title}>  {/* ✅ TEXTO ENVUELTO */}
               Hola, {user.nombre.split(' ')[0]}
             </Text>
-            <Text style={styles.subtitle}>
+            <Text style={styles.subtitle}>  {/* ✅ TEXTO ENVUELTO */}
               {user.rol === 'estudiante' ? 'Estudiante' : 'Profesor'}
             </Text>
           </View>
@@ -103,21 +107,21 @@ const HomeScreen: React.FC<ScreenProps> = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView>
+      <ScrollView showsVerticalScrollIndicator={false}>
         {/* Acciones según rol */}
-        <Card title="Acciones rápidas">
+        <Card title="Acciones rápidas" style={styles.marginBottom20}>
           {user.rol === 'estudiante' ? (
             <>
               <Button
                 title="📚 Ver mis materias"
                 onPress={() => navigation.navigate('Materias', { tipo: 'mis-materias' })}
-                style={styles.mb10}
+                style={styles.marginBottom10}
               />
               <Button
                 title="➕ Inscribirme a materias"
                 onPress={() => navigation.navigate('Materias', { tipo: 'todas' })}
                 type="secondary"
-                style={styles.mb10}
+                style={styles.marginBottom10}
               />
               <Button
                 title="📄 Ver mis entregas"
@@ -130,13 +134,13 @@ const HomeScreen: React.FC<ScreenProps> = ({ navigation }) => {
               <Button
                 title="📚 Ver mis materias"
                 onPress={() => navigation.navigate('Materias', { tipo: 'mis-materias' })}
-                style={styles.mb10}
+                style={styles.marginBottom10}
               />
               <Button
                 title="➕ Crear nueva materia"
                 onPress={() => navigation.navigate('CrearMateria')}
                 type="secondary"
-                style={styles.mb10}
+                style={styles.marginBottom10}
               />
               <Button
                 title="📋 Ver entregas pendientes"
@@ -148,10 +152,10 @@ const HomeScreen: React.FC<ScreenProps> = ({ navigation }) => {
         </Card>
 
         {/* Últimas materias */}
-        <Text style={[styles.cardTitle, styles.mt20]}>Materias recientes</Text>
+        <Text style={[styles.sectionTitle, styles.marginTop20]}>Materias recientes</Text>
         
         {materias.length === 0 ? (
-          <Text style={[styles.text, styles.textCenter, styles.mt20]}>
+          <Text style={[styles.text, styles.textCenter, styles.marginTop20]}>
             No hay materias disponibles
           </Text>
         ) : (
@@ -161,6 +165,7 @@ const HomeScreen: React.FC<ScreenProps> = ({ navigation }) => {
               title={materia.nombre}
               description={`Profesor: ${materia.profesor_nombre || 'Desconocido'}`}
               onPress={() => navigation.navigate('Tareas', { materia })}
+              style={styles.materiaItem}
             />
           ))
         )}
@@ -168,12 +173,13 @@ const HomeScreen: React.FC<ScreenProps> = ({ navigation }) => {
         {/* Para estudiantes: últimas entregas */}
         {user.rol === 'estudiante' && entregas.length > 0 && (
           <>
-            <Text style={[styles.cardTitle, styles.mt20]}>Mis últimas entregas</Text>
+            <Text style={[styles.sectionTitle, styles.marginTop20]}>Mis últimas entregas</Text>
             {entregas.slice(0, 2).map((entrega) => (
               <Card
                 key={entrega.id}
                 title={entrega.titulo || 'Tarea'}
                 description={`Calificación: ${entrega.calificacion || 'Pendiente'}`}
+                style={styles.materiaItem}
               />
             ))}
           </>
@@ -185,7 +191,7 @@ const HomeScreen: React.FC<ScreenProps> = ({ navigation }) => {
             title="Ver todas las materias"
             onPress={() => navigation.navigate('Materias', { tipo: 'todas' })}
             type="secondary"
-            style={styles.mt20}
+            style={styles.marginTop20}
           />
         )}
       </ScrollView>

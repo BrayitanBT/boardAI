@@ -1,151 +1,190 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Alert } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { styles } from '../styles/global';
-import Card from '../components/Card';
+// screens/PerfilScreen.tsx
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, ScrollView, RefreshControl, Alert } from 'react-native';
+import { useAuth } from '../context/AuthContext';
+import { getMisMaterias, salirMateria } from '../api';
+import { ScreenProps, Materia } from '../types';
 import Button from '../components/Button';
+import Card from '../components/Card';
 import Loading from '../components/Loading';
-import { logout, getMisMaterias } from '../api';
-import { ScreenProps, User, Materia } from '../types';
+import { styles as globalStyles } from '../styles/global';
 
-const PerfilScreen: React.FC<ScreenProps> = ({ navigation }) => {
-  const [user, setUser] = useState<User | null>(null);
+const PerfilScreen: React.FC<ScreenProps<'Perfil'>> = ({ navigation }) => {
+  const { user, signOut } = useAuth();
   const [materias, setMaterias] = useState<Materia[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  
+  const usuario_id = user?.id;
+
+  const loadMaterias = useCallback(async () => {
+    if (!usuario_id) return;
+
+    setLoading(true);
+    try {
+      const response = await getMisMaterias();
+      if (response.success && response.materias) {
+        setMaterias(response.materias);
+      } else {
+        Alert.alert("Error", response.message || "No se pudieron cargar las materias. Revise la API.");
+      }
+    } catch{
+      Alert.alert("Error", "Error al cargar las materias");
+      
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [usuario_id]);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    loadMaterias();
+  }, [loadMaterias]);
 
-  const loadData = async (): Promise<void> => {
-    setLoading(true);
-    
-    const userJson = await AsyncStorage.getItem('user');
-    if (userJson) {
-      setUser(JSON.parse(userJson));
-    }
-
-    const materiasResult = await getMisMaterias();
-    if (materiasResult.success && materiasResult.materias) {
-      setMaterias(materiasResult.materias);
-    }
-    
-    setLoading(false);
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadMaterias();
   };
 
-  const handleLogout = (): void => {
+  const handleLogout = () => {
     Alert.alert(
-      'Cerrar sesión',
-      '¿Estás seguro de que quieres salir?',
+      'Cerrar Sesión',
+      '¿Estás seguro de que quieres cerrar tu sesión?',
       [
         { text: 'Cancelar', style: 'cancel' },
-        { 
-          text: 'Salir', 
+        {
+          text: 'Cerrar',
+          onPress: () => {
+            signOut();
+          },
           style: 'destructive',
+        },
+      ]
+    );
+  };
+  
+  const handleSalirMateria = async (materiaId: number) => {
+    Alert.alert(
+      'Salir de la materia',
+      '¿Estás seguro de que quieres salir de esta materia?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Salir',
           onPress: async () => {
-            await logout();
-            navigation.replace('Login');
-          }
-        }
+            const response = await salirMateria(materiaId);
+            if (response.success) {
+              Alert.alert("Éxito", "Saliste de la materia.");
+              loadMaterias();
+            } else {
+              Alert.alert("Error", response.message || "No se pudo salir de la materia.");
+            }
+          },
+          style: 'destructive',
+        },
       ]
     );
   };
 
-  if (loading || !user) {
-    return <Loading message="Cargando perfil..." />;
+  if (!user) {
+    return <Loading message="Cargando perfil..." type="fullscreen" />;
   }
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Información del usuario */}
-      <View style={[styles.card, styles.profileCard]}>
-        <View style={[
-          styles.avatarLarge,
-          user.rol === 'profesor' && styles.avatarProfesor
-        ]}>
-          <Text style={styles.avatarTextLarge}>
-            {user.nombre.charAt(0).toUpperCase()}
-          </Text>
-        </View>
-        
-        <Text style={styles.title}>{user.nombre}</Text>
-        <Text style={styles.subtitle}>{user.email}</Text>
-        <View style={[styles.row, styles.roleContainer]}>
-          <View style={[
-            styles.roleBadge,
-            user.rol === 'profesor' && styles.roleBadgeProfesor
-          ]}>
-            <Text style={styles.roleText}>
-              {user.rol === 'profesor' ? '👨‍🏫 Profesor' : '👨‍🎓 Estudiante'}
-            </Text>
+    <ScrollView
+      style={globalStyles.container}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+      contentContainerStyle={globalStyles.scrollContent} // ✅ Ahora usa el estilo global
+    >
+      <View style={globalStyles.card}>
+        <Text style={globalStyles.title}>Mi Perfil</Text>
+
+        {/* Información de Usuario */}
+        <View style={globalStyles.profileInfo}>
+          <Text style={globalStyles.subtitle}>{user.nombre}</Text>
+          <Text style={globalStyles.text}>{user.email}</Text>
+          
+          <View style={[globalStyles.horizontalLayout, globalStyles.roleContainer]}>
+            <Text style={globalStyles.roleText}>Rol:</Text>
+            <Text style={globalStyles.roleValue}>{user.rol.toUpperCase()}</Text>
           </View>
         </View>
+
+        <Button 
+          title="Cerrar Sesión" 
+          onPress={handleLogout} 
+          type="danger" 
+        />
       </View>
 
-      {/* Estadísticas */}
-      <Card title="Estadísticas">
-        <View style={[styles.row, styles.spaceBetween]}>
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{materias.length}</Text>
-            <Text style={styles.statLabel}>Materias</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>0</Text>
-            <Text style={styles.statLabel}>Tareas pendientes</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>-</Text>
-            <Text style={styles.statLabel}>Promedio</Text>
-          </View>
-        </View>
-      </Card>
-
-      {/* Materias inscritas/creadas */}
-      <Card title={user.rol === 'estudiante' ? 'Mis materias inscritas' : 'Materias que enseño'}>
-        {materias.length === 0 ? (
-          <Text style={styles.noDataText}>
-            No tienes materias {user.rol === 'estudiante' ? 'inscritas' : 'creadas'}
+      {/* Materias del Usuario */}
+      <View style={globalStyles.section}>
+        <View style={[globalStyles.horizontalLayout, globalStyles.justifyContentBetween]}>
+          <Text style={globalStyles.sectionTitle}>
+            {user.rol === 'profesor' ? 'Mis Materias Creadas' : 'Mis Materias Inscritas'}
           </Text>
+          {user.rol === 'profesor' && (
+            <Button 
+              title="Crear" 
+              onPress={() => navigation.navigate('CrearMateria')} 
+              type="secondary"
+              style={{ paddingVertical: 5 }}
+            />
+          )}
+        </View>
+
+        {loading ? (
+          <Loading message="Cargando materias..." type="inline" />
+        ) : materias.length === 0 ? (
+          <Text style={globalStyles.emptyText}>No tienes materias asociadas.</Text>
         ) : (
           materias.map((materia) => (
-            <View key={materia.id} style={[styles.row, styles.spaceBetween, styles.materiaItem]}>
-              <Text style={styles.text}>{materia.nombre}</Text>
-              <Button
-                title="Ver"
-                onPress={() => navigation.navigate('Tareas', { materia })}
-                type="secondary"
-                style={styles.smallButton}
-              />
-            </View>
+            <Card 
+              key={materia.id}
+              title={materia.nombre}
+              description={`Código: ${materia.codigo || 'N/A'}`}
+              onPress={() => navigation.navigate('Tareas', { materia })}
+            >
+              <View>
+                <Text style={globalStyles.textSmall}>Profesor: {materia.profesor_nombre}</Text>
+                
+                <View style={[globalStyles.horizontalLayout, globalStyles.justifyContentBetween, globalStyles.materiaItem]}>
+                  <Button 
+                    title="Ver Tareas"
+                    onPress={() => navigation.navigate('Tareas', { materia })}
+                    type="secondary"
+                    style={globalStyles.smallButton}
+                  />
+                  {user.rol === 'estudiante' && (
+                    <Button 
+                      title="Salir"
+                      onPress={() => handleSalirMateria(materia.id)}
+                      type="danger"
+                      style={globalStyles.smallButton}
+                    />
+                  )}
+                </View>
+              </View>
+            </Card>
           ))
         )}
-      </Card>
-
-      {/* Acciones */}
-      <Card title="Acciones de cuenta">
-        {user.rol === 'profesor' && (
-          <Button
-            title="➕ Crear nueva materia"
-            onPress={() => navigation.navigate('CrearMateria')}
-            style={styles.mb10}
-          />
-        )}
         
-        {user.rol === 'profesor' && materias.length > 0 && (
-          <Button
-            title="📝 Crear nueva tarea"
-            onPress={() => navigation.navigate('CrearTarea')}
-            type="secondary"
-            style={styles.mb10}
+        <View style={globalStyles.marginBottom10}>
+          <Button 
+            title="Ver todas las materias" 
+            onPress={() => navigation.navigate('Materias', { tipo: 'todas' })} 
           />
-        )}
-
-        <Button
-          title="🚪 Cerrar sesión"
-          onPress={handleLogout}
-          type="danger"
-        />
-      </Card>
+        </View>
+        <View style={globalStyles.marginBottom10}>
+          <Button 
+            title="Ver mis materias" 
+            onPress={() => navigation.navigate('Materias', { tipo: 'mis-materias' })} 
+            type="secondary"
+          />
+        </View>
+      </View>
     </ScrollView>
   );
 };

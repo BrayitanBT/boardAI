@@ -1,43 +1,83 @@
+// src/components/Button.tsx
 import React from 'react';
 import { 
   TouchableOpacity, 
   Text, 
-  ActivityIndicator 
+  ActivityIndicator, 
+  StyleSheet,
+  ViewStyle,
+  TextStyle,
+  StyleProp
 } from 'react-native';
-import { styles } from '../styles/global';
 import { ButtonProps } from '../types';
+import { styles } from '../styles/global';
 
-const Button: React.FC<ButtonProps> = ({ 
-  title, 
-  onPress, 
+const Button: React.FC<ButtonProps> = ({
+  title,
+  onPress,
   loading = false,
   disabled = false,
   type = 'primary',
-  style,
-  ...props 
+  style
 }) => {
-  const getBaseStyle = () => {
-    if (type === 'secondary') return styles.buttonSecondary;
-    if (type === 'danger') return styles.buttonDanger;
-    return styles.button;
+  const getButtonStyle = (): StyleProp<ViewStyle> => {
+    const buttonStyles: any[] = [styles.button];
+    
+    if (disabled) {
+      buttonStyles.push(styles.buttonDisabled);
+    } else {
+      switch (type) {
+        case 'secondary':
+          buttonStyles.push(styles.buttonSecondary);
+          break;
+        case 'danger':
+          buttonStyles.push(styles.buttonDanger);
+          break;
+        default:
+          break;
+      }
+    }
+    
+    if (style) {
+      buttonStyles.push(style);
+    }
+    
+    return StyleSheet.flatten(buttonStyles) as ViewStyle;
+  };
+
+  const getTextStyle = (): TextStyle => {
+    if (disabled) {
+      return { color: '#fff' };
+    }
+    
+    if (type === 'secondary') {
+      return { color: '#3498db', fontSize: 16, fontWeight: '600' };
+    }
+    
+    if (type === 'danger') {
+      return { color: '#fff', fontSize: 16, fontWeight: '600' };
+    }
+    
+    return { color: '#fff', fontSize: 16, fontWeight: '600' };
   };
 
   return (
     <TouchableOpacity
-      style={[
-        getBaseStyle(),
-        disabled && styles.buttonDisabled,
-        style
-      ]}
+      style={getButtonStyle()}
       onPress={onPress}
       disabled={disabled || loading}
-      {...props}
+      activeOpacity={0.8}
     >
       {loading ? (
-        <ActivityIndicator color="white" />
-      ) : (
-        <Text style={styles.buttonText}>{title}</Text>
-      )}
+        <ActivityIndicator 
+          size="small" 
+          color={type === 'secondary' ? '#3498db' : '#fff'} 
+          style={{ marginRight: 8 }}
+        />
+      ) : null}
+      <Text style={getTextStyle()}>
+        {loading ? 'Cargando...' : title}
+      </Text>
     </TouchableOpacity>
   );
 };

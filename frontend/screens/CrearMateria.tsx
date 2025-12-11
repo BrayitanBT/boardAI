@@ -3,10 +3,10 @@ import { View, Text, ScrollView, Alert } from 'react-native';
 import { styles } from '../styles/global';
 import Input from '../components/Input';
 import Button from '../components/Button';
-import { crearMateria } from '../api';
+import { createMateria } from '../api';
 import { ScreenProps } from '../types';
 
-const CrearMateriaScreen: React.FC<ScreenProps> = ({ navigation }) => {
+const CrearMateriaScreen: React.FC<ScreenProps<'CrearMateria'>> = ({ navigation }) => {
   const [nombre, setNombre] = useState<string>('');
   const [descripcion, setDescripcion] = useState<string>('');
   const [codigo, setCodigo] = useState<string>('');
@@ -20,7 +20,7 @@ const CrearMateriaScreen: React.FC<ScreenProps> = ({ navigation }) => {
 
     setLoading(true);
 
-    const result = await crearMateria({
+    const result = await createMateria({
       nombre,
       descripcion,
       codigo,
@@ -65,7 +65,7 @@ const CrearMateriaScreen: React.FC<ScreenProps> = ({ navigation }) => {
         numberOfLines={4}
       />
 
-      <View style={styles.row}>
+      <View style={[styles.horizontalLayout, styles.marginTop20]}>
         <Button
           title="Cancelar"
           onPress={() => navigation.goBack()}

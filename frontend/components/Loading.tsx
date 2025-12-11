@@ -1,75 +1,69 @@
 import React from 'react';
-import { 
-  View, 
-  Text, 
-  ActivityIndicator, 
-  StyleSheet 
+import {
+  View,
+  Text,
+  ActivityIndicator,
+  StyleProp,
+  ViewStyle
 } from 'react-native';
-import { styles } from '../styles/global';
 import { LoadingProps } from '../types';
+import { styles } from '../styles/global';
 
-const Loading: React.FC<LoadingProps> = ({ 
-  message = 'Cargando...', 
-  size = 'large', 
+const Loading: React.FC<LoadingProps> = ({
+  message = 'Cargando...',
+  size = 'large',
   color = '#3498db',
   type = 'default',
   containerStyle,
   textStyle,
   showSpinner = true
 }) => {
-  const getContainerStyle = () => {
-    if (type === 'fullscreen') {
-      return [styles.centerContainer, loadingStyles.fullscreenContainer, containerStyle];
+  const getContainerStyle = (): StyleProp<ViewStyle> => {
+    switch (type) {
+      case 'fullscreen':
+        return {
+          ...styles.centerContainer,
+          backgroundColor: 'rgba(255, 255, 255, 0.9)',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 999,
+        };
+      case 'inline':
+        return {
+          flexDirection: 'row',
+          alignItems: 'center',
+          padding: 10,
+        };
+      default:
+        return styles.centerContainer;
     }
-    if (type === 'inline') {
-      return [loadingStyles.inlineContainer, containerStyle];
-    }
-    return [styles.centerContainer, loadingStyles.defaultContainer, containerStyle];
   };
 
+  const containerStyles: StyleProp<ViewStyle> = [
+    getContainerStyle(),
+    containerStyle
+  ];
+
+  // ✅ Asegurar que message sea siempre string
+  const displayMessage = String(message || 'Cargando...');
+
   return (
-    <View style={getContainerStyle()}>
+    <View style={containerStyles}>
       {showSpinner && (
-        <ActivityIndicator 
-          size={size} 
-          color={color} 
-          style={loadingStyles.spinner}
+        <ActivityIndicator
+          size={size}
+          color={color}
+          style={{ marginBottom: type === 'default' || type === 'fullscreen' ? 10 : 0 }}
         />
       )}
-      {message && (
-        <Text style={[loadingStyles.message, textStyle]}>{message}</Text>
-      )}
+      <Text style={[styles.text, textStyle]}>
+        {displayMessage} {/* ✅ Usar displayMessage en lugar de message directamente */}
+      </Text>
     </View>
   );
 };
-
-const loadingStyles = StyleSheet.create({
-  defaultContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-  },
-  fullscreenContainer: {
-    backgroundColor: '#f5f5f5',
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 999,
-  },
-  inlineContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 10,
-  },
-  spinner: {
-    marginBottom: 15,
-  },
-  message: {
-    fontSize: 16,
-    color: '#7f8c8d',
-    textAlign: 'center',
-  },
-});
 
 export default Loading;

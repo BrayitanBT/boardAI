@@ -99,31 +99,30 @@ CREATE TABLE comentarios (
 -- ============================================
 
 INSERT INTO
-    usuarios (
-        nombre,
-        email,
-        contrasena,
-        rol
-    )
+    usuarios (
+        nombre,
+        email,
+        contrasena,
+        rol
+    )
 VALUES (
-        'Profesor Juan',
-        'profesor@mail.com',
-        '123',
-        'profesor'
-    ),
-    (
-        'Estudiante Ana',
-        'ana@mail.com',
-        '123',
-        'estudiante'
-    ),
-    (
-        'Estudiante Luis',
-        'luis@mail.com',
-        '123',
-        'estudiante'
-    );
-
+        'Profesor Juan',
+        'profesor@mail.com',
+        '$2b$10$78vF/fD/Jd2C2pQ5D3V.i.sWnK1C5m0C1pL3fX1FjX0zU2H2D0F0s',
+        'profesor'
+    ),
+    (
+        'Estudiante Ana',
+        'ana@mail.com',
+        '$2b$10$78vF/fD/Jd2C2pQ5D3V.i.sWnK1C5m0C1pL3fX1FjX0zU2H2D0F0s',
+        'estudiante'
+    ),
+    (
+        'Estudiante Luis',
+        'luis@mail.com',
+        '$2b$10$78vF/fD/Jd2C2pQ5D3V.i.sWnK1C5m0C1pL3fX1FjX0zU2H2D0F0s',
+        'estudiante'
+    );
 INSERT INTO
     materias (
         nombre,

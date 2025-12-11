@@ -1,14 +1,14 @@
-
-import React, { useState, useEffect } from 'react';
+// App.tsx (simplificado usando estilos globales)
+import React from 'react';
 import { View, Text } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { styles } from './styles/global';
-import { RootStackParamList } from './types';
 
-// Importar screens
-import LoginScreen from './screens/Login';
+import { AuthProvider, useAuth } from './context/AuthContext'; 
+import { styles, navigationStyles } from './styles/global'; // ✅ Importa navigationStyles
+import { RootStackParamList } from './types'; 
+
+import LoginScreen from './screens/Login'; 
 import RegisterScreen from './screens/Register';
 import HomeScreen from './screens/Home';
 import MateriasScreen from './screens/Materias';
@@ -17,22 +17,13 @@ import CrearMateriaScreen from './screens/CrearMateria';
 import CrearTareaScreen from './screens/CrearTarea';
 import EntregasScreen from './screens/Entregas';
 import PerfilScreen from './screens/Perfil';
+import DetalleEntregaScreen from './screens/DetalleEntregaScreen';
+import CalificarEntregaScreen from './screens/CalificarEntregaScreen';
 
 const Stack = createStackNavigator<RootStackParamList>();
 
-const App: React.FC = () => {
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
-  const [loading, setLoading] = useState<boolean>(true);
-
-  useEffect(() => {
-    checkLoginStatus();
-  }, []);
-
-  const checkLoginStatus = async (): Promise<void> => {
-    const token = await AsyncStorage.getItem('token');
-    setIsLoggedIn(!!token);
-    setLoading(false);
-  };
+const NavigationRoot: React.FC = () => {
+  const { isLoggedIn, loading } = useAuth(); 
 
   if (loading) {
     return (
@@ -43,78 +34,93 @@ const App: React.FC = () => {
   }
 
   return (
-    <NavigationContainer>
-      <Stack.Navigator screenOptions={{
-        headerStyle: { backgroundColor: '#3498db' },
-        headerTintColor: 'white',
-        headerTitleStyle: { fontWeight: 'bold' }
-      }}>
-        {!isLoggedIn ? (
-          <>
-            <Stack.Screen 
-              name="Login" 
-              options={{ headerShown: false }}
-            >
-              {(props) => (
-                <LoginScreen 
-                  {...props} 
-                  onLoginSuccess={() => setIsLoggedIn(true)} 
-                />
-              )}
-            </Stack.Screen>
-            <Stack.Screen 
-              name="Register" 
-              options={{ title: 'Registro' }}
-            >
-              {(props) => (
-                <RegisterScreen 
-                  {...props} 
-                  onRegisterSuccess={() => setIsLoggedIn(true)} 
-                />
-              )}
-            </Stack.Screen>
-          </>
-        ) : (
-          <>
-            <Stack.Screen 
-              name="Home" 
-              component={HomeScreen}
-              options={{ title: 'Inicio' }}
-            />
-            <Stack.Screen 
-              name="Materias" 
-              component={MateriasScreen}
-              options={{ title: 'Materias' }}
-            />
-            <Stack.Screen 
-              name="Tareas" 
-              component={TareasScreen}
-              options={{ title: 'Tareas' }}
-            />
-            <Stack.Screen 
-              name="CrearMateria" 
-              component={CrearMateriaScreen}
-              options={{ title: 'Nueva Materia' }}
-            />
-            <Stack.Screen 
-              name="CrearTarea" 
-              component={CrearTareaScreen}
-              options={{ title: 'Nueva Tarea' }}
-            />
-            <Stack.Screen 
-              name="Entregas" 
-              component={EntregasScreen}
-              options={{ title: 'Entregas' }}
-            />
-            <Stack.Screen 
-              name="Perfil" 
-              component={PerfilScreen}
-              options={{ title: 'Mi Perfil' }}
-            />
-          </>
-        )}
-      </Stack.Navigator>
-    </NavigationContainer>
+    <Stack.Navigator 
+      initialRouteName={isLoggedIn ? "Home" : "Login"}
+      screenOptions={navigationStyles.screenOptions} // ✅ Usa estilos globales
+    >
+      {!isLoggedIn ? (
+        // Usuario NO autenticado
+        <>
+          <Stack.Screen 
+            name="Login" 
+            component={LoginScreen}
+            options={navigationStyles.screenOptionsByRoute.Login} // ✅
+          />
+          <Stack.Screen 
+            name="Register" 
+            component={RegisterScreen}
+            options={navigationStyles.screenOptionsByRoute.Register} // ✅
+          />
+        </>
+      ) : (
+        // Usuario SÍ autenticado
+        <>
+          <Stack.Screen 
+            name="Home" 
+            component={HomeScreen} 
+            options={navigationStyles.screenOptionsByRoute.Home} // ✅
+          />
+          
+          <Stack.Screen 
+            name="Materias" 
+            component={MateriasScreen} 
+            options={navigationStyles.screenOptionsByRoute.Materias} // ✅
+          />
+          
+          <Stack.Screen 
+            name="Tareas" 
+            component={TareasScreen} 
+            options={navigationStyles.screenOptionsByRoute.Tareas} // ✅
+          />
+          
+          <Stack.Screen 
+            name="CrearMateria" 
+            component={CrearMateriaScreen} 
+            options={navigationStyles.screenOptionsByRoute.CrearMateria} // ✅
+          />
+          
+          <Stack.Screen 
+            name="CrearTarea" 
+            component={CrearTareaScreen} 
+            options={navigationStyles.screenOptionsByRoute.CrearTarea} // ✅
+          />
+          
+          <Stack.Screen 
+            name="Entregas" 
+            component={EntregasScreen} 
+            options={navigationStyles.screenOptionsByRoute.Entregas} // ✅
+          />
+          
+          <Stack.Screen 
+            name="Perfil" 
+            component={PerfilScreen} 
+            options={navigationStyles.screenOptionsByRoute.Perfil} // ✅
+          />
+          
+          <Stack.Screen 
+            name="DetalleEntrega" 
+            component={DetalleEntregaScreen} 
+            options={navigationStyles.screenOptionsByRoute.DetalleEntrega} // ✅
+          />
+          
+          <Stack.Screen 
+            name="CalificarEntrega" 
+            component={CalificarEntregaScreen}
+            options={navigationStyles.screenOptionsByRoute.CalificarEntrega} // ✅
+          />
+        </>
+      )}
+    </Stack.Navigator>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <AuthProvider> 
+      <NavigationContainer>
+        <NavigationRoot />
+      </NavigationContainer>
+    </AuthProvider>
   );
 };
 

@@ -1,3 +1,4 @@
+// src/screens/TareasScreen.tsx (VERSIÓN CORREGIDA)
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   View, 
@@ -14,16 +15,16 @@ import Button from '../components/Button';
 import Input from '../components/Input';
 import Loading from '../components/Loading';
 import { 
-  getTareas, 
-  entregarTarea, 
-  getComentarios, 
-  crearComentario,
+  getTareasByMateria,
+  entregarTarea, // 🔥 Ahora está en api.ts
+  getComentariosByTarea,
+  createComentario, // 🔥 CAMBIADO: createComentario en lugar de crearComentario
   eliminarComentario,
   eliminarTarea 
 } from '../api';
-import { ScreenProps, User, Materia, Tarea, Comentario } from '../types';
+import { TareasScreenProps, User, Materia, Tarea, Comentario } from '../types';
 
-const TareasScreen: React.FC<ScreenProps> = ({ route, navigation }) => {
+const TareasScreen: React.FC<TareasScreenProps> = ({ route, navigation }) => {
   const params = route?.params || {};
   const { materia }: { materia: Materia } = params;
   
@@ -43,7 +44,7 @@ const TareasScreen: React.FC<ScreenProps> = ({ route, navigation }) => {
     if (!materia?.id) return;
     
     setLoading(true);
-    const result = await getTareas(materia.id);
+    const result = await getTareasByMateria(materia.id);
     if (result.success && result.tareas) {
       setTareas(result.tareas);
     }
@@ -62,7 +63,7 @@ const TareasScreen: React.FC<ScreenProps> = ({ route, navigation }) => {
   };
 
   const loadComentarios = async (tareaId: number): Promise<void> => {
-    const result = await getComentarios(tareaId);
+    const result = await getComentariosByTarea(tareaId);
     if (result.success && result.comentarios) {
       setComentarios(prev => ({
         ...prev,
@@ -77,6 +78,7 @@ const TareasScreen: React.FC<ScreenProps> = ({ route, navigation }) => {
       return;
     }
 
+    // 🔥 Usa la función importada de api.ts
     const result = await entregarTarea(tareaId, entregaText);
     
     if (result.success) {
@@ -94,7 +96,8 @@ const TareasScreen: React.FC<ScreenProps> = ({ route, navigation }) => {
       return;
     }
 
-    const result = await crearComentario(tareaId, nuevoComentario);
+    // 🔥 CORREGIDO: Usa createComentario (en inglés)
+    const result = await createComentario(tareaId, { comentario: nuevoComentario });
     
     if (result.success) {
       setNuevoComentario('');
@@ -161,14 +164,16 @@ const TareasScreen: React.FC<ScreenProps> = ({ route, navigation }) => {
         <Button
           title="➕ Crear tarea en esta materia"
           onPress={() => navigation.navigate('CrearTarea')}
-          style={styles.mb10}
+          style={styles.marginBottom10}
         />
       )}
 
       {tareas.length === 0 ? (
-        <Text style={[styles.text, styles.textCenter, styles.mt20]}>
-          No hay tareas en esta materia
-        </Text>
+        <View style={styles.marginTop20}>
+          <Text style={[styles.text, styles.textCenter]}>
+            No hay tareas en esta materia
+          </Text>
+        </View>
       ) : (
         tareas.map((tarea) => (
           <Card
@@ -181,13 +186,13 @@ const TareasScreen: React.FC<ScreenProps> = ({ route, navigation }) => {
                 title="🗑️ Eliminar tarea"
                 onPress={() => handleEliminarTarea(tarea.id)}
                 type="danger"
-                style={styles.mb10}
+                style={styles.marginBottom10}
               />
             )}
 
             {user?.rol === 'estudiante' && (
               <>
-                <Text style={[styles.inputLabel, styles.mt20]}>Tu entrega:</Text>
+                <Text style={[styles.inputLabel, styles.marginTop20]}>Tu entrega:</Text>
                 <TextInput
                   style={[
                     styles.input,
@@ -201,7 +206,7 @@ const TareasScreen: React.FC<ScreenProps> = ({ route, navigation }) => {
                 <Button
                   title="📤 Entregar tarea"
                   onPress={() => handleEntregar(tarea.id)}
-                  style={styles.mt20}
+                  style={styles.marginTop20}
                 />
               </>
             )}
@@ -233,7 +238,7 @@ const TareasScreen: React.FC<ScreenProps> = ({ route, navigation }) => {
                       }
                     ]}
                   >
-                    <View style={[styles.row, styles.spaceBetween]}>
+                    <View style={[styles.horizontalLayout, styles.justifyContentBetween]}>
                       <Text style={{ fontWeight: '600' }}>
                         {comentario.usuario_nombre} ({comentario.rol})
                       </Text>
@@ -241,9 +246,11 @@ const TareasScreen: React.FC<ScreenProps> = ({ route, navigation }) => {
                         {new Date(comentario.creado_en).toLocaleDateString()}
                       </Text>
                     </View>
-                    <Text style={[styles.text, { marginTop: 5 }]}>
-                      {comentario.comentario}
-                    </Text>
+                    <View style={styles.marginTop5}>
+                      <Text style={styles.text}>
+                        {comentario.comentario}
+                      </Text>
+                    </View>
                     {(comentario.usuario_id === user?.id || user?.rol === 'profesor') && (
                       <TouchableOpacity
                         onPress={() => handleEliminarComentario(comentario.id, tarea.id)}
@@ -255,18 +262,20 @@ const TareasScreen: React.FC<ScreenProps> = ({ route, navigation }) => {
                   </View>
                 ))}
 
-                <Input
-                  label="Agregar comentario"
-                  value={nuevoComentario}
-                  onChangeText={setNuevoComentario}
-                  placeholder="Escribe un comentario..."
-                  multiline
-                />
-                <Button
-                  title="Comentar"
-                  onPress={() => handleComentar(tarea.id)}
-                  type="secondary"
-                />
+                <View style={styles.marginTop10}>
+                  <Input
+                    label="Agregar comentario"
+                    value={nuevoComentario}
+                    onChangeText={setNuevoComentario}
+                    placeholder="Escribe un comentario..."
+                    multiline
+                  />
+                  <Button
+                    title="Comentar"
+                    onPress={() => handleComentar(tarea.id)}
+                    type="secondary"
+                  />
+                </View>
               </View>
             )}
           </Card>

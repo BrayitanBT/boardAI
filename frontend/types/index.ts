@@ -1,4 +1,8 @@
-// ============ TIPOS DE DATOS ============
+// src/types.ts
+import { RouteProp } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+
+// ============ TIPOS DE DATOS DE RESPUESTA ============
 
 // Tipos de usuario
 export interface User {
@@ -41,12 +45,14 @@ export interface Tarea {
   fecha_creacion: string;
   fecha_entrega?: string;
   archivo_url?: string;
+  materia_nombre?: string; // Añadido para compatibilidad
 }
 
 export interface TareaResponse {
   success: boolean;
   message?: string;
   tareas?: Tarea[];
+  tarea?: Tarea; // Añadido para getTareaById
 }
 
 // Tipos de entrega
@@ -58,15 +64,19 @@ export interface Entrega {
   archivo_url?: string;
   fecha_entrega: string;
   calificacion?: number;
-  comentario_profesor?: string;
-  titulo?: string;
+  comentario?: string;
+  titulo: string;
+  materia_nombre: string;
+  materia_id: number;
   estudiante_nombre?: string;
+  estudiante_email?: string;
 }
 
 export interface EntregaResponse {
   success: boolean;
   message?: string;
   entregas?: Entrega[];
+  entrega?: Entrega; // Añadido para getEntregaById
 }
 
 // Tipos de comentario
@@ -75,7 +85,7 @@ export interface Comentario {
   tarea_id: number;
   usuario_id: number;
   usuario_nombre: string;
-  rol: string;
+  rol: 'estudiante' | 'profesor';
   comentario: string;
   creado_en: string;
 }
@@ -84,6 +94,53 @@ export interface ComentarioResponse {
   success: boolean;
   message?: string;
   comentarios?: Comentario[];
+}
+
+// ============ TIPOS DE DATOS DE SOLICITUD ============
+
+// Auth
+export interface LoginCredentials {
+  email: string;
+  contrasena: string;
+}
+
+export interface RegisterData extends LoginCredentials {
+  nombre: string;
+  rol: 'estudiante' | 'profesor';
+}
+
+// Materias
+export interface MateriaData {
+  nombre: string;
+  descripcion?: string;
+  codigo?: string;
+}
+
+// Tareas
+export interface TareaData {
+  materia_id: number;
+  titulo: string;
+  descripcion?: string;
+  fecha_entrega?: string;
+  archivo_url?: string;
+}
+
+// Entregas
+export interface EntregaData {
+  tarea_id: number;
+  contenido?: string;
+  archivo_url?: string;
+}
+
+// Calificación
+export interface CalificacionData {
+  calificacion: number;
+  comentario?: string;
+}
+
+// Comentarios
+export interface ComentarioData {
+  comentario: string;
 }
 
 // ============ PROPS PARA COMPONENTES ============
@@ -108,6 +165,10 @@ export interface InputProps {
   numberOfLines?: number;
   keyboardType?: 'default' | 'email-address' | 'numeric' | 'phone-pad';
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
+  autoComplete?: 'email' | 'password' | 'name' | 'tel' | 'off' | string;
+  editable?: boolean;
+  maxLength?: number;
+  style?: any; // ✅ AÑADIDO: Para aceptar estilos personalizados
 }
 
 export interface CardProps {
@@ -140,18 +201,63 @@ export type RootStackParamList = {
   CrearTarea: undefined;
   Entregas: { tipo?: 'mis-entregas' | 'pendientes'; tareaId?: number };
   Perfil: undefined;
+  DetalleEntrega: { entregaId: number };
+  CalificarEntrega: { entregaId: number };
 };
 
 // Props para screens
-export interface ScreenProps {
-  navigation: any;
-  route?: any;
+export type ScreenProps<RouteName extends keyof RootStackParamList> = {
+  navigation: NativeStackNavigationProp<RootStackParamList, RouteName>;
+  route: RouteProp<RootStackParamList, RouteName>;
+};
+
+// Tipos específicos para pantallas
+export interface LoginScreenProps {
+  navigation: NativeStackNavigationProp<RootStackParamList, 'Login'>;
 }
 
-export interface LoginScreenProps extends ScreenProps {
-  onLoginSuccess: () => void;
+export interface RegisterScreenProps {
+  navigation: NativeStackNavigationProp<RootStackParamList, 'Register'>;
 }
 
-export interface RegisterScreenProps extends ScreenProps {
-  onRegisterSuccess: () => void;
+export type HomeScreenProps = ScreenProps<'Home'>;
+export type MateriasScreenProps = ScreenProps<'Materias'>;
+export type TareasScreenProps = ScreenProps<'Tareas'>;
+export type CrearMateriaScreenProps = ScreenProps<'CrearMateria'>;
+export type CrearTareaScreenProps = ScreenProps<'CrearTarea'>;
+export type EntregasScreenProps = ScreenProps<'Entregas'>;
+export type PerfilScreenProps = ScreenProps<'Perfil'>;
+export type DetalleEntregaScreenProps = ScreenProps<'DetalleEntrega'>;
+export type CalificarEntregaScreenProps = ScreenProps<'CalificarEntrega'>;
+
+// ============ TIPOS PARA RESPUESTAS ADICIONALES ============
+export interface SimpleResponse {
+  success: boolean;
+  message?: string;
+}
+
+export interface IdResponse {
+  success: boolean;
+  message?: string;
+  materiaId?: number;
+  tareaId?: number;
+  entregaId?: number;
+  comentarioId?: number;
+}
+
+// ============ TIPOS PARA API RESPONSES ADICIONALES ============
+export interface CalificacionResponse {
+  success: boolean;
+  message?: string;
+  calificacion?: number;
+  comentario?: string;
+}
+
+export interface StatsResponse {
+  success: boolean;
+  message?: string;
+  totalMaterias?: number;
+  totalTareas?: number;
+  totalEntregas?: number;
+  promedioCalificacion?: number;
 }

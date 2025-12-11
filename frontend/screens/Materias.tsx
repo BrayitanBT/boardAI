@@ -1,108 +1,138 @@
-import React, { useState, useEffect } from 'react';
+// src/screens/MateriasScreen.tsx (VERSIÓN COMPLETA CORREGIDA)
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, Alert } from 'react-native';
 import { styles } from '../styles/global';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Loading from '../components/Loading';
 import { getMaterias, getMisMaterias, inscribirseMateria } from '../api';
-import { ScreenProps, Materia } from '../types';
+import { ScreenProps, Materia } from '../types'; 
+import { useAuth } from '../context/AuthContext'; 
 
-const MateriasScreen: React.FC<ScreenProps> = ({ route, navigation }) => {
+type MateriasScreenProps = ScreenProps<'Materias'>;
+
+const MateriasScreen: React.FC<MateriasScreenProps> = ({ route, navigation }) => {
+  const { user, loading: authLoading } = useAuth(); 
+
   const { tipo = 'todas' } = route.params || {};
   const [materias, setMaterias] = useState<Materia[]>([]);
   const [misMaterias, setMisMaterias] = useState<Materia[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  const loadData = useCallback(async (): Promise<void> => {
+    if (authLoading) return;
 
-  const loadData = async (): Promise<void> => {
     setLoading(true);
     
-    if (tipo === 'mis-materias') {
-      const result = await getMisMaterias();
-      if (result.success && result.materias) {
-        setMisMaterias(result.materias);
-      }
+    const misMateriasResult = await getMisMaterias();
+    if (misMateriasResult.success && misMateriasResult.materias) {
+      setMisMaterias(misMateriasResult.materias);
     } else {
+      setMisMaterias([]);
+    }
+
+    if (tipo === 'todas') {
       const result = await getMaterias();
       if (result.success && result.materias) {
-        setMaterias(result.materias);
+        const materiasFiltradas = result.materias.filter(m => 
+          !misMateriasResult.materias?.some(mm => mm.id === m.id)
+        );
+        setMaterias(materiasFiltradas);
+      } else {
+        setMaterias([]);
       }
+    } else {
+      setMaterias([]); 
     }
     
     setLoading(false);
-  };
+  }, [tipo, authLoading]); 
+
+  useEffect(() => {
+    loadData();
+  }, [tipo, loadData]); 
 
   const handleInscribirse = async (materiaId: number): Promise<void> => {
     const result = await inscribirseMateria(materiaId);
     
     if (result.success) {
       Alert.alert('Éxito', 'Te has inscrito correctamente');
-      loadData();
+      loadData(); 
     } else {
       Alert.alert('Error', result.message);
     }
   };
+  
+  const displayList = tipo === 'mis-materias' ? misMaterias : materias;
+  
+  const puedeCrearMateria = user?.rol === 'profesor' && tipo === 'mis-materias';
 
-  const renderMateria = (materia: Materia, esInscrito: boolean = false): JSX.Element => (
-    <Card
-      key={materia.id}
-      title={materia.nombre}
-      description={`${materia.descripcion || 'Sin descripción'}\nProfesor: ${materia.profesor_nombre || 'Desconocido'}`}
-    >
-      <View style={[styles.row, styles.spaceBetween, styles.mt20]}>
-        <Button
-          title="Ver tareas"
-          onPress={() => navigation.navigate('Tareas', { materia })}
-          style={{ flex: 1, marginRight: 10 }}
-          type="secondary"
-        />
-        
-        {tipo === 'todas' && !esInscrito && (
+  const renderMateria = (materia: Materia, esInscrito: boolean = false): JSX.Element => {
+    const puedeVerTareas = esInscrito || (user?.rol === 'profesor' && materia.profesor_id === user?.id);
+    
+    return (
+      <Card
+        key={materia.id}
+        title={materia.nombre}
+        description={`${materia.descripcion || 'Sin descripción'}\nProfesor: ${materia.profesor_nombre || 'Desconocido'}`}
+      >
+        <View style={[styles.horizontalLayout, styles.justifyContentBetween, styles.marginTop20]}>
           <Button
-            title="Inscribirme"
-            onPress={() => handleInscribirse(materia.id)}
-            style={{ flex: 1, marginLeft: 10 }}
+            title="Ver tareas"
+            onPress={() => navigation.navigate('Tareas', { materia })} 
+            style={{ flex: tipo === 'mis-materias' ? 1 : 0.5, marginRight: 10 }}
+            type="secondary"
+            disabled={!puedeVerTareas}
           />
-        )}
-      </View>
-    </Card>
-  );
+          
+          {tipo === 'todas' && !esInscrito && user?.rol === 'estudiante' && (
+            <Button
+              title="Inscribirme"
+              onPress={() => handleInscribirse(materia.id)}
+              style={{ flex: 0.5, marginLeft: 10 }}
+            />
+          )}
+        </View>
+      </Card>
+    );
+  };
 
-  if (loading) {
+  if (authLoading || loading) {
     return <Loading message="Cargando materias..." />;
   }
 
   return (
     <View style={styles.container}>
       <ScrollView>
-        {tipo === 'mis-materias' ? (
-          <>
-            <Text style={styles.title}>Mis Materias</Text>
-            {misMaterias.length === 0 ? (
-              <Text style={[styles.text, styles.textCenter, styles.mt20]}>
-                No estás inscrito en ninguna materia
-              </Text>
-            ) : (
-              misMaterias.map((materia) => renderMateria(materia, true))
-            )}
-          </>
+        <Text style={styles.title}>
+          {tipo === 'mis-materias' ? 'Mis Materias' : 'Todas las Materias'}
+        </Text>
+        
+        {puedeCrearMateria && (
+          <Button
+            title="+ Crear Nueva Materia"
+            onPress={() => navigation.navigate('CrearMateria')}
+            style={styles.marginBottom20}
+          />
+        )}
+
+        {displayList.length === 0 ? (
+          // SOLUCIÓN: View con margen + Text sin marginTop
+          <View style={styles.marginTop20}>
+            <Text style={[styles.text, styles.textCenter]}>
+              {tipo === 'mis-materias' 
+                ? (user?.rol === 'profesor' 
+                  ? 'Aún no has creado ninguna materia.'
+                  : 'No estás inscrito en ninguna materia.')
+                : 'No hay materias disponibles'
+              }
+            </Text>
+          </View>
         ) : (
-          <>
-            <Text style={styles.title}>Todas las Materias</Text>
-            {materias.length === 0 ? (
-              <Text style={[styles.text, styles.textCenter, styles.mt20]}>
-                No hay materias disponibles
-              </Text>
-            ) : (
-              materias.map((materia) => {
-                const esInscrito = misMaterias.some(m => m.id === materia.id);
-                return renderMateria(materia, esInscrito);
-              })
-            )}
-          </>
+          displayList.map((materia) => {
+            const esInscrito = misMaterias.some(m => m.id === materia.id);
+            return renderMateria(materia, esInscrito);
+          })
         )}
       </ScrollView>
     </View>
