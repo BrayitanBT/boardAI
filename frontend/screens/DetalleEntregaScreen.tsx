@@ -1,4 +1,4 @@
-// src/screens/DetalleEntregaScreen.tsx (CORREGIDO - solo estilos existentes)
+// src/screens/DetalleEntregaScreen.tsx (CON ESTILOS GLOBALES EXISTENTES)
 import React, { useState, useEffect } from 'react';
 import { 
   View, 
@@ -51,7 +51,7 @@ const DetalleEntregaScreen: React.FC<DetalleEntregaScreenProps> = ({ route, navi
   const handleOpenArchivo = (): void => {
     if (entrega?.archivo_url) {
       Linking.openURL(entrega.archivo_url).catch(err => 
-        Alert.alert('Error', 'No se pudo abrir el archivo', err)
+        Alert.alert('Error', 'No se pudo abrir el archivo',err)
       );
     }
   };
@@ -125,8 +125,8 @@ const DetalleEntregaScreen: React.FC<DetalleEntregaScreenProps> = ({ route, navi
                 </Text>
               </View>
               {entrega.comentario && (
-                <View style={styles.marginTop10}>
-                  <Text style={styles.text}>Comentario del profesor:</Text>
+                <View style={[styles.marginTop10, styles.padding10, styles.backgroundColorLightBlue]}>
+                  <Text style={[styles.text, styles.fontWeight600]}>Comentario del profesor:</Text>
                   <Text style={[styles.text, styles.marginTop5]}>
                     "{entrega.comentario}"
                   </Text>

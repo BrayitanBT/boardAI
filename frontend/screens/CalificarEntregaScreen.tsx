@@ -1,4 +1,4 @@
-// src/screens/CalificarEntregaScreen.tsx
+// src/screens/CalificarEntregaScreen.tsx (CON ESTILOS GLOBALES)
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -90,60 +90,73 @@ const CalificarEntregaScreen: React.FC<CalificarEntregaScreenProps> = ({ route, 
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.title}>Calificar Entrega</Text>
-      
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>{entrega.titulo || 'Tarea sin título'}</Text>
-        <Text style={styles.cardText}>Materia: {entrega.materia_nombre}</Text>
-        <Text style={styles.cardText}>Estudiante: {entrega.estudiante_nombre || 'Desconocido'}</Text>
-      </View>
+    <View style={styles.screenContainer}>
+      <ScrollView 
+        contentContainerStyle={styles.screenScrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Encabezado */}
+        <View style={styles.screenHeader}>
+          <Text style={styles.screenTitle}>Calificar Entrega</Text>
+        </View>
+        
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>{entrega.titulo || 'Tarea sin título'}</Text>
+          <Text style={[styles.cardText, styles.marginTop5]}>Materia: {entrega.materia_nombre}</Text>
+          <Text style={[styles.cardText, styles.marginTop10]}>Estudiante: {entrega.estudiante_nombre || 'Desconocido'}</Text>
+        </View>
 
-      <View style={[styles.card, styles.marginTop20]}>
-        <Text style={styles.sectionTitle}>Contenido entregado</Text>
-        <Text style={[styles.text, styles.marginTop10]}>
-          {entrega.contenido || 'No hay contenido escrito'}
-        </Text>
-      </View>
+        <View style={[styles.card, styles.marginTop15]}>
+          <Text style={styles.sectionTitle}>Contenido entregado</Text>
+          <Text style={[styles.text, styles.marginTop10]}>
+            {entrega.contenido || 'No hay contenido escrito'}
+          </Text>
+        </View>
 
-      <View style={[styles.card, styles.marginTop20]}>
-        <Text style={styles.sectionTitle}>Calificación</Text>
-        
-        <Input
-          label="Calificación (0-100)"
-          value={calificacion}
-          onChangeText={setCalificacion}
-          placeholder="Ingresa la calificación"
-          keyboardType="numeric"
-          maxLength={3}
-          style={styles.marginTop10} // ✅ Ahora funcionará
-        />
-        
-        <Input
-          label="Comentario (opcional)"
-          value={comentario}
-          onChangeText={setComentario}
-          placeholder="Agrega un comentario para el estudiante"
-          multiline
-          numberOfLines={4}
-          style={styles.marginTop10} // ✅ Ahora funcionará
-        />
-        
+        <View style={[styles.card, styles.marginTop15]}>
+          <Text style={styles.sectionTitle}>Calificación</Text>
+          
+          <View style={styles.marginTop10}>
+            <Input
+              label="Calificación (0-100)"
+              value={calificacion}
+              onChangeText={setCalificacion}
+              placeholder="Ingresa la calificación"
+              keyboardType="numeric"
+              maxLength={3}
+            />
+          </View>
+          
+          <View style={styles.marginTop15}>
+            <Input
+              label="Comentario (opcional)"
+              value={comentario}
+              onChangeText={setComentario}
+              placeholder="Agrega un comentario para el estudiante"
+              multiline
+              numberOfLines={4}
+            />
+          </View>
+          
+          <Button
+            title={submitting ? "Guardando..." : "📝 Guardar Calificación"}
+            onPress={handleCalificar}
+            disabled={submitting}
+            style={styles.marginTop20}
+          />
+        </View>
+
         <Button
-          title={submitting ? "Guardando..." : "📝 Guardar Calificación"}
-          onPress={handleCalificar}
-          disabled={submitting}
-          style={styles.marginTop20}
+          title="← Cancelar"
+          onPress={() => navigation.goBack()}
+          type="secondary"
+          style={styles.marginTop15}
         />
-      </View>
-
-      <Button
-        title="← Cancelar"
-        onPress={() => navigation.goBack()}
-        type="secondary"
-        style={styles.marginTop20}
-      />
-    </ScrollView>
+        
+        {/* Espacio al final */}
+        <View style={styles.marginTop20} />
+      </ScrollView>
+    </View>
   );
 };
 

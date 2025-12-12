@@ -1,4 +1,4 @@
-// src/screens/CrearTareaScreen.tsx (CORREGIDO - solo estilos existentes)
+// src/screens/CrearTareaScreen.tsx (CORREGIDO)
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, Alert } from 'react-native';
 import { styles } from '../styles/global';
@@ -96,7 +96,7 @@ const CrearTareaScreen: React.FC<CrearTareaScreenProps> = ({ navigation }) => {
         {materias.length > 0 ? (
           <View style={[styles.inputContainer, styles.marginBottom15]}>
             <Text style={styles.inputLabel}>Materia *</Text>
-            <View style={styles.horizontalLayout}> {/* ✅ Ya tiene flexWrap: 'wrap' */}
+            <View style={styles.horizontalLayout}>
               {materias.map((materia) => (
                 <Button
                   key={materia.id}

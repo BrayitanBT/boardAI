@@ -1,12 +1,11 @@
-// src/screens/EntregasScreen.tsx
+// src/screens/EntregasScreen.tsx (VERSIÓN CON ESTILOS EXISTENTES)
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   View, 
   Text, 
   FlatList, 
   ActivityIndicator, 
-  TouchableOpacity,
-  ScrollView
+  TouchableOpacity
 } from 'react-native';
 import { styles } from '../styles/global'; 
 import { ScreenProps, Entrega, Materia } from '../types'; 
@@ -92,6 +91,46 @@ const EntregasScreen: React.FC<ScreenProps<'Entregas'>> = ({ navigation, route }
     return e.materia_id.toString() === selectedMateriaId;
   });
 
+  const renderHeader = () => {
+    const title = isProfesor 
+      ? (tareaId ? 'Entregas de Tarea' : 'Entregas Pendientes')
+      : 'Mis Entregas';
+    
+    return (
+      <View style={[styles.screenHeader, styles.marginBottom20]}>
+        <Text style={styles.screenTitle}>{title}</Text>
+        
+        {isProfesor && !tareaId && materias.length > 0 && (
+          <FlatList
+            horizontal
+            data={materias}
+            keyExtractor={(item) => item.id.toString()}
+            showsHorizontalScrollIndicator={false}
+            style={styles.marginTop15}
+            contentContainerStyle={styles.padding20}
+            renderItem={({ item: materia }) => {
+              const isSelected = materia.id.toString() === selectedMateriaId;
+              
+              return (
+                <TouchableOpacity
+                  key={materia.id}
+                  onPress={() => setSelectedMateriaId(materia.id.toString())}
+                  style={[
+                    styles.materiaFilterButton,
+                    isSelected ? styles.materiaFilterButtonSelected : styles.materiaFilterButtonUnselected,
+                    styles.marginRight10
+                  ]}
+                >
+                  <Text style={styles.buttonText}>{ensureString(materia.nombre)}</Text>
+                </TouchableOpacity>
+              );
+            }}
+          />
+        )}
+      </View>
+    );
+  };
+
   const renderEntregaItem = ({ item }: { item: Entrega }) => {
     const isCalificada = item.calificacion !== null && item.calificacion !== undefined;
     
@@ -118,11 +157,11 @@ const EntregasScreen: React.FC<ScreenProps<'Entregas'>> = ({ navigation, route }
     return (
       <Card 
         key={item.id}
-        style={styles.card}
+        style={[styles.card, styles.marginBottom15]}
         onPress={() => navigation.navigate('DetalleEntrega', { entregaId: item.id })} 
       >
         <View style={[styles.horizontalLayout, styles.justifyContentBetween]}>
-          <View style={{ flex: 1 }}>
+          <View style={styles.flex1}>
             <Text style={styles.cardTitle}>{ensureString(item.titulo) || 'Tarea Sin Título'}</Text>
             <View style={styles.marginTop5}>
               <Text style={styles.cardText}>{ensureString(item.materia_nombre)}</Text>
@@ -136,13 +175,13 @@ const EntregasScreen: React.FC<ScreenProps<'Entregas'>> = ({ navigation, route }
         {isProfesor && item.estudiante_nombre && (
           <View style={styles.marginTop10}>
             <Text style={styles.cardText}>
-              Estudiante: <Text style={{ fontWeight: '600' }}>{ensureString(item.estudiante_nombre)}</Text>
+              Estudiante: <Text style={[styles.cardText, styles.fontWeight600]}>{ensureString(item.estudiante_nombre)}</Text>
             </Text>
           </View>
         )}
 
         <View style={styles.marginTop10}>
-          <Text style={[styles.cardText, { fontSize: 12 }]}>
+          <Text style={[styles.cardText, styles.textDate]}>
             Entregado: {item.fecha_entrega ? new Date(item.fecha_entrega).toLocaleDateString() : 'Fecha no disponible'}
           </Text>
         </View>
@@ -157,6 +196,16 @@ const EntregasScreen: React.FC<ScreenProps<'Entregas'>> = ({ navigation, route }
           </View>
         )}
       </Card>
+    );
+  };
+
+  const renderEmptyState = () => {
+    return (
+      <View style={[styles.centerContainer, styles.padding20, styles.marginTop30]}>
+        <Text style={[styles.text, styles.textCenter]}>
+          No hay entregas {isProfesor ? 'pendientes de calificar' : 'enviadas'} {selectedMateriaId ? 'para la materia seleccionada.' : '.'}
+        </Text>
+      </View>
     );
   };
 
@@ -193,54 +242,18 @@ const EntregasScreen: React.FC<ScreenProps<'Entregas'>> = ({ navigation, route }
     );
   }
 
-  const title = isProfesor 
-    ? (tareaId ? 'Entregas de Tarea' : 'Entregas Pendientes')
-    : 'Mis Entregas';
-    
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>{title}</Text>
-
-      {isProfesor && !tareaId && materias.length > 0 && (
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false}
-          style={{ marginBottom: 15 }}
-        >
-          {materias.map(materia => {
-            const isSelected = materia.id.toString() === selectedMateriaId;
-            
-            return (
-              <TouchableOpacity
-                key={materia.id}
-                onPress={() => setSelectedMateriaId(materia.id.toString())}
-                style={[
-                  styles.materiaFilterButton,
-                  isSelected ? styles.materiaFilterButtonSelected : styles.materiaFilterButtonUnselected
-                ]}
-              >
-                <Text style={styles.buttonText}>{ensureString(materia.nombre)}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      )}
-
-      {filteredEntregas.length === 0 ? (
-        <View style={styles.textContainerWithMargin}>
-          <Text style={styles.noDataText}>
-            No hay entregas {isProfesor ? 'pendientes de calificar' : 'enviadas'} {selectedMateriaId ? 'para la materia seleccionada.' : '.'}
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={filteredEntregas}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={renderEntregaItem}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 20 }}
-        />
-      )}
+    <View style={styles.screenContainer}>
+      <FlatList
+        data={filteredEntregas}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={renderEntregaItem}
+        ListHeaderComponent={renderHeader}
+        ListEmptyComponent={renderEmptyState}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.screenScrollContent, styles.paddingVertical30]}
+        ListFooterComponent={<View style={styles.marginTop20} />}
+      />
     </View>
   );
 };

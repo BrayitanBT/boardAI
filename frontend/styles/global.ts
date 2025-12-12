@@ -289,7 +289,7 @@ export const styles = StyleSheet.create({
     fontWeight: '600',
   },
   buttonSecondary: {
-    backgroundColor: '#27ae60',
+    backgroundColor: '#41be30ff',
   },
   buttonDanger: {
     backgroundColor: '#e74c3c',
