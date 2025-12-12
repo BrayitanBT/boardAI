@@ -1,4 +1,4 @@
-// src/screens/DetalleEntregaScreen.tsx
+// src/screens/DetalleEntregaScreen.tsx (CORREGIDO - solo estilos existentes)
 import React, { useState, useEffect } from 'react';
 import { 
   View, 
@@ -70,86 +70,97 @@ const DetalleEntregaScreen: React.FC<DetalleEntregaScreenProps> = ({ route, navi
   const isCalificada = entrega.calificacion !== null && entrega.calificacion !== undefined;
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.title}>Detalles de la Entrega</Text>
-      
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Información de la Tarea</Text>
-        <Text style={styles.cardTitle}>{entrega.titulo || 'Tarea sin título'}</Text>
-        <Text style={styles.cardText}>Materia: {entrega.materia_nombre}</Text>
-        
-        {isProfesor && (
-          <Text style={[styles.cardText, styles.marginTop10]}>
-            Estudiante: {entrega.estudiante_nombre || 'Desconocido'}
-          </Text>
-        )}
-        
-        <Text style={[styles.cardText, styles.marginTop10]}>
-          Fecha de entrega: {new Date(entrega.fecha_entrega).toLocaleDateString()}
-        </Text>
-      </View>
-
-      <View style={[styles.card, styles.marginTop20]}>
-        <Text style={styles.sectionTitle}>Contenido</Text>
-        <Text style={[styles.text, { marginTop: 10 }]}>
-          {entrega.contenido || 'No hay contenido escrito'}
-        </Text>
-      </View>
-
-      {entrega.archivo_url && (
-        <View style={[styles.card, styles.marginTop20]}>
-          <Text style={styles.sectionTitle}>Archivo Adjunto</Text>
-          <TouchableOpacity onPress={handleOpenArchivo} style={styles.marginTop10}>
-            <Text style={{ color: '#3498db', textDecorationLine: 'underline' }}>
-              📎 Abrir archivo adjunto
-            </Text>
-          </TouchableOpacity>
+    <View style={styles.screenContainer}>
+      <ScrollView 
+        contentContainerStyle={styles.screenScrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Encabezado */}
+        <View style={styles.screenHeader}>
+          <Text style={styles.screenTitle}>Detalles de la Entrega</Text>
         </View>
-      )}
+      
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Información de la Tarea</Text>
+          <Text style={styles.cardTitle}>{entrega.titulo || 'Tarea sin título'}</Text>
+          <Text style={[styles.cardText, styles.marginTop5]}>Materia: {entrega.materia_nombre}</Text>
+          
+          {isProfesor && (
+            <Text style={[styles.cardText, styles.marginTop10]}>
+              Estudiante: {entrega.estudiante_nombre || 'Desconocido'}
+            </Text>
+          )}
+          
+          <Text style={[styles.cardText, styles.marginTop10]}>
+            Fecha de entrega: {new Date(entrega.fecha_entrega).toLocaleDateString()}
+          </Text>
+        </View>
 
-      <View style={[styles.card, styles.marginTop20]}>
-        <Text style={styles.sectionTitle}>Calificación</Text>
-        {isCalificada ? (
-          <>
-            <View style={[styles.horizontalLayout, styles.marginTop10]}>
-              <Text style={styles.text}>Calificación: </Text>
-              <Text style={[styles.text, { fontWeight: 'bold', color: '#2ecc71' }]}>
-                {entrega.calificacion}/100
+        <View style={[styles.card, styles.marginTop15]}>
+          <Text style={styles.sectionTitle}>Contenido</Text>
+          <Text style={[styles.text, styles.marginTop10]}>
+            {entrega.contenido || 'No hay contenido escrito'}
+          </Text>
+        </View>
+
+        {entrega.archivo_url && (
+          <View style={[styles.card, styles.marginTop15]}>
+            <Text style={styles.sectionTitle}>Archivo Adjunto</Text>
+            <TouchableOpacity onPress={handleOpenArchivo} style={styles.marginTop10}>
+              <Text style={[styles.text, styles.textPrimary]}>
+                📎 Abrir archivo adjunto
               </Text>
-            </View>
-            {entrega.comentario && (
-              <View style={styles.marginTop10}>
-                <Text style={styles.text}>Comentario del profesor:</Text>
-                <Text style={[styles.text, { fontStyle: 'italic', marginTop: 5 }]}>
-                  "{entrega.comentario}"
+            </TouchableOpacity>
+          </View>
+        )}
+
+        <View style={[styles.card, styles.marginTop15]}>
+          <Text style={styles.sectionTitle}>Calificación</Text>
+          {isCalificada ? (
+            <>
+              <View style={[styles.horizontalLayout, styles.marginTop10]}>
+                <Text style={styles.text}>Calificación: </Text>
+                <Text style={[styles.text, styles.fontWeightBold, styles.textSuccess]}>
+                  {entrega.calificacion}/100
                 </Text>
               </View>
-            )}
-          </>
-        ) : (
-          <Text style={[styles.text, styles.marginTop10]}>
-            {isProfesor 
-              ? 'Esta entrega aún no ha sido calificada.' 
-              : 'Tu entrega aún no ha sido calificada.'}
-          </Text>
+              {entrega.comentario && (
+                <View style={styles.marginTop10}>
+                  <Text style={styles.text}>Comentario del profesor:</Text>
+                  <Text style={[styles.text, styles.marginTop5]}>
+                    "{entrega.comentario}"
+                  </Text>
+                </View>
+              )}
+            </>
+          ) : (
+            <Text style={[styles.text, styles.marginTop10]}>
+              {isProfesor 
+                ? 'Esta entrega aún no ha sido calificada.' 
+                : 'Tu entrega aún no ha sido calificada.'}
+            </Text>
+          )}
+        </View>
+
+        {isProfesor && !isCalificada && (
+          <Button
+            title="📝 Calificar Entrega"
+            onPress={handleGoToCalificacion}
+            style={styles.marginTop15}
+          />
         )}
-      </View>
 
-      {isProfesor && !isCalificada && (
         <Button
-          title="📝 Calificar Entrega"
-          onPress={handleGoToCalificacion}
-          style={styles.marginTop20}
+          title="← Volver"
+          onPress={() => navigation.goBack()}
+          type="secondary"
+          style={styles.marginTop15}
         />
-      )}
-
-      <Button
-        title="← Volver"
-        onPress={() => navigation.goBack()}
-        type="secondary"
-        style={styles.marginTop20}
-      />
-    </ScrollView>
+        
+        {/* Espacio al final */}
+        <View style={styles.marginTop20} />
+      </ScrollView>
+    </View>
   );
 };
 

@@ -1,10 +1,10 @@
-// src/screens/CrearTareaScreen.tsx
+// src/screens/CrearTareaScreen.tsx (CORREGIDO - solo estilos existentes)
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, Alert } from 'react-native';
 import { styles } from '../styles/global';
 import Input from '../components/Input';
 import Button from '../components/Button';
-import { createTarea, getMisMaterias } from '../api'; // ✅ Importa desde '../api'
+import { createTarea, getMisMaterias } from '../api';
 import { CrearTareaScreenProps, Materia } from '../types';
 
 const CrearTareaScreen: React.FC<CrearTareaScreenProps> = ({ navigation }) => {
@@ -74,68 +74,84 @@ const CrearTareaScreen: React.FC<CrearTareaScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.title}>Crear Nueva Tarea</Text>
-      <Text style={styles.subtitle}>Asigna una tarea a tus estudiantes</Text>
-
-      <Input
-        label="Título de la tarea *"
-        value={titulo}
-        onChangeText={setTitulo}
-        placeholder="Ej: Ejercicios de Álgebra"
-      />
-
-      {materias.length > 0 ? (
-        <View style={styles.inputContainer}>
-          <Text style={styles.inputLabel}>Materia *</Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-            {materias.map((materia) => (
-              <Button
-                key={materia.id}
-                title={materia.nombre}
-                onPress={() => setMateriaId(materia.id.toString())}
-                type={materiaId === materia.id.toString() ? 'primary' : 'secondary'}
-                style={{ marginRight: 10, marginBottom: 10 }}
-              />
-            ))}
-          </View>
+    <View style={styles.screenContainer}>
+      <ScrollView 
+        contentContainerStyle={styles.screenScrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Encabezado */}
+        <View style={styles.screenHeader}>
+          <Text style={styles.screenTitle}>Crear Nueva Tarea</Text>
+          <Text style={styles.screenSubtitle}>Asigna una tarea a tus estudiantes</Text>
         </View>
-      ) : (
-        <Text style={styles.text}>Cargando materias...</Text>
-      )}
 
-      <Input
-        label="Descripción (opcional)"
-        value={descripcion}
-        onChangeText={setDescripcion}
-        placeholder="Instrucciones para la tarea..."
-        multiline
-        numberOfLines={4}
-      />
-
-      <Input
-        label="Fecha de entrega (opcional)"
-        value={fechaEntrega}
-        onChangeText={setFechaEntrega}
-        placeholder="YYYY-MM-DD HH:MM"
-      />
-
-      <View style={{ flexDirection: 'row', marginTop: 20 }}>
-        <Button
-          title="Cancelar"
-          onPress={() => navigation.goBack()}
-          type="secondary"
-          style={{ flex: 1, marginRight: 10 }}
+        <Input
+          label="Título de la tarea *"
+          value={titulo}
+          onChangeText={setTitulo}
+          placeholder="Ej: Ejercicios de Álgebra"
+          style={styles.marginBottom15}
         />
-        <Button
-          title={loading ? "Creando..." : "Crear Tarea"}
-          onPress={handleCrear}
-          loading={loading}
-          disabled={loading}
-          style={{ flex: 1, marginLeft: 10 }}
+
+        {materias.length > 0 ? (
+          <View style={[styles.inputContainer, styles.marginBottom15]}>
+            <Text style={styles.inputLabel}>Materia *</Text>
+            <View style={styles.horizontalLayout}> {/* ✅ Ya tiene flexWrap: 'wrap' */}
+              {materias.map((materia) => (
+                <Button
+                  key={materia.id}
+                  title={materia.nombre}
+                  onPress={() => setMateriaId(materia.id.toString())}
+                  type={materiaId === materia.id.toString() ? 'primary' : 'secondary'}
+                  style={[styles.marginRight10, styles.marginBottom10]}
+                />
+              ))}
+            </View>
+          </View>
+        ) : (
+          <View style={styles.marginBottom15}>
+            <Text style={styles.text}>Cargando materias...</Text>
+          </View>
+        )}
+
+        <Input
+          label="Descripción (opcional)"
+          value={descripcion}
+          onChangeText={setDescripcion}
+          placeholder="Instrucciones para la tarea..."
+          multiline
+          numberOfLines={4}
+          style={styles.marginBottom15}
         />
-      </View>
-    </ScrollView>
+
+        <Input
+          label="Fecha de entrega (opcional)"
+          value={fechaEntrega}
+          onChangeText={setFechaEntrega}
+          placeholder="YYYY-MM-DD HH:MM"
+          style={styles.marginBottom20}
+        />
+
+        <View style={[styles.horizontalLayout, styles.marginTop20]}>
+          <Button
+            title="Cancelar"
+            onPress={() => navigation.goBack()}
+            type="secondary"
+            style={[styles.marginRight10, styles.flex1]}
+          />
+          <Button
+            title={loading ? "Creando..." : "Crear Tarea"}
+            onPress={handleCrear}
+            loading={loading}
+            disabled={loading}
+            style={[styles.marginLeft10, styles.flex1]}
+          />
+        </View>
+        
+        {/* Espacio al final */}
+        <View style={styles.marginTop20} />
+      </ScrollView>
+    </View>
   );
 };
 

@@ -1,4 +1,3 @@
-// src/api.ts
 import axios, { AxiosInstance } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { 
@@ -103,6 +102,46 @@ export const loginUser = async (credentials: LoginCredentials): Promise<AuthResp
 export const getCurrentUser = async (): Promise<User | null> => {
   const userJson = await AsyncStorage.getItem('user');
   return userJson ? JSON.parse(userJson) : null;
+};
+
+// --- FUNCIONES DE USUARIO ---
+export const updateUser = async (userId: number, data: Partial<User>): Promise<AuthResponse> => {
+  try {
+    const response = await api.put<AuthResponse>(`/users/${userId}`, data);
+    if (response.data.success && response.data.user && response.data.token) {
+      // Actualizar el usuario y token en AsyncStorage
+      await AsyncStorage.setItem('user', JSON.stringify(response.data.user));
+      await AsyncStorage.setItem('token', response.data.token);
+    }
+    return response.data;
+  } catch (error) {
+    return handleError(error);
+  }
+};
+
+export const changePassword = async (
+  userId: number, 
+  currentPassword: string, 
+  newPassword: string
+): Promise<SimpleResponse> => {
+  try {
+    const response = await api.put<SimpleResponse>(`/users/${userId}/password`, {
+      current_password: currentPassword,
+      new_password: newPassword
+    });
+    return response.data;
+  } catch (error) {
+    return handleError(error);
+  }
+};
+
+export const getUserById = async (id: number): Promise<AuthResponse> => {
+  try {
+    const response = await api.get<AuthResponse>(`/users/${id}`);
+    return response.data;
+  } catch (error) {
+    return handleError(error);
+  }
 };
 
 // --- FUNCIONES DE MATERIAS ---
@@ -333,15 +372,6 @@ export const deleteComentario = eliminarComentario; // Alias para compatibilidad
 export const getTodasTareas = async (): Promise<TareaResponse> => {
   try {
     const response = await api.get<TareaResponse>('/tareas');
-    return response.data;
-  } catch (error) {
-    return handleError(error);
-  }
-};
-
-export const getUserById = async (id: number): Promise<AuthResponse> => {
-  try {
-    const response = await api.get<AuthResponse>(`/users/${id}`);
     return response.data;
   } catch (error) {
     return handleError(error);

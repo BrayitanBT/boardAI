@@ -51,7 +51,7 @@ const Button: React.FC<ButtonProps> = ({
     }
     
     if (type === 'secondary') {
-      return { color: '#3498db', fontSize: 16, fontWeight: '600' };
+      return { color: '#fff', fontSize: 16, fontWeight: '600' };
     }
     
     if (type === 'danger') {

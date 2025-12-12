@@ -1,4 +1,3 @@
-// backend/index.js
 require("dotenv").config();
 const express = require("express");
 const jwt = require("jsonwebtoken");
@@ -179,6 +178,167 @@ app.post("/login", async (req, res) => {
   } catch (err) {
     console.error("Error en /login:", err);
     return res.status(500).json({ success: false, message: "Error interno del servidor" });
+  }
+});
+
+// -------------------- ACTUALIZAR USUARIO --------------------
+// Actualizar información del usuario (nombre, email)
+app.put("/users/:id", auth, async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const currentUserId = req.user.id;
+    const { nombre, email } = req.body;
+    
+    // Solo permitir al propio usuario actualizar su información
+    if (parseInt(userId) !== currentUserId) {
+      return res.status(403).json({ success: false, message: "Solo puedes actualizar tu propio perfil" });
+    }
+    
+    if (!nombre && !email) {
+      return res.status(400).json({ success: false, message: "Debes proporcionar nombre o email para actualizar" });
+    }
+    
+    // Verificar si el email ya existe (si se está actualizando el email)
+    if (email) {
+      const [existingEmail] = await db.query(
+        "SELECT id FROM usuarios WHERE email = ? AND id != ?", 
+        [email, userId]
+      );
+      if (existingEmail.length) {
+        return res.status(400).json({ success: false, message: "El email ya está en uso por otro usuario" });
+      }
+    }
+    
+    // Construir la consulta de actualización dinámicamente
+    let updateFields = [];
+    let updateValues = [];
+    
+    if (nombre) {
+      updateFields.push("nombre = ?");
+      updateValues.push(nombre);
+    }
+    
+    if (email) {
+      updateFields.push("email = ?");
+      updateValues.push(email);
+    }
+    
+    updateValues.push(userId);
+    
+    await db.query(
+      `UPDATE usuarios SET ${updateFields.join(", ")} WHERE id = ?`,
+      updateValues
+    );
+    
+    // Obtener el usuario actualizado
+    const [rows] = await db.query(
+      "SELECT id, nombre, email, rol FROM usuarios WHERE id = ?", 
+      [userId]
+    );
+    
+    const updatedUser = rows[0];
+    
+    // Generar nuevo token con la información actualizada
+    const newToken = crearToken(updatedUser);
+    
+    return res.json({ 
+      success: true, 
+      message: "Perfil actualizado exitosamente",
+      user: updatedUser,
+      token: newToken // Enviar nuevo token actualizado
+    });
+  } catch (err) {
+    console.error("Error en PUT /users/:id:", err);
+    return res.status(500).json({ success: false, message: "Error al actualizar el perfil" });
+  }
+});
+
+// -------------------- CAMBIAR CONTRASEÑA --------------------
+app.put("/users/:id/password", auth, async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const currentUserId = req.user.id;
+    const { current_password, new_password } = req.body;
+    
+    // Solo permitir al propio usuario cambiar su contraseña
+    if (parseInt(userId) !== currentUserId) {
+      return res.status(403).json({ success: false, message: "Solo puedes cambiar tu propia contraseña" });
+    }
+    
+    if (!current_password || !new_password) {
+      return res.status(400).json({ success: false, message: "Debes proporcionar la contraseña actual y la nueva" });
+    }
+    
+    if (new_password.length < 6) {
+      return res.status(400).json({ success: false, message: "La nueva contraseña debe tener al menos 6 caracteres" });
+    }
+    
+    // Obtener la contraseña actual del usuario
+    const [rows] = await db.query(
+      "SELECT contrasena FROM usuarios WHERE id = ?", 
+      [userId]
+    );
+    
+    if (!rows.length) {
+      return res.status(404).json({ success: false, message: "Usuario no encontrado" });
+    }
+    
+    // Verificar la contraseña actual
+    const user = rows[0];
+    const passwordMatch = await bcrypt.compare(current_password, user.contrasena);
+    
+    if (!passwordMatch) {
+      return res.status(401).json({ success: false, message: "La contraseña actual es incorrecta" });
+    }
+    
+    // Hashear la nueva contraseña
+    const hashedPassword = await bcrypt.hash(new_password, 10);
+    
+    // Actualizar la contraseña
+    await db.query(
+      "UPDATE usuarios SET contrasena = ? WHERE id = ?",
+      [hashedPassword, userId]
+    );
+    
+    return res.json({ 
+      success: true, 
+      message: "Contraseña cambiada exitosamente"
+    });
+  } catch (err) {
+    console.error("Error en PUT /users/:id/password:", err);
+    return res.status(500).json({ success: false, message: "Error al cambiar la contraseña" });
+  }
+});
+
+// -------------------- OBTENER USUARIO POR ID --------------------
+app.get("/users/:id", auth, async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const currentUserId = req.user.id;
+    const currentUserRol = req.user.rol;
+
+    // Solo permitir al propio usuario o a profesores
+    if (parseInt(userId) !== currentUserId && currentUserRol !== 'profesor') {
+      return res.status(403).json({ success: false, message: "Acceso denegado" });
+    }
+
+    const [rows] = await db.query(`
+      SELECT id, nombre, email, rol 
+      FROM usuarios 
+      WHERE id = ?
+    `, [userId]);
+    
+    if (!rows.length) {
+      return res.status(404).json({ success: false, message: "Usuario no encontrado" });
+    }
+
+    return res.json({ 
+      success: true, 
+      user: rows[0]
+    });
+  } catch (err) {
+    console.error("Error en GET /users/:id:", err);
+    return res.status(500).json({ success: false, message: "Error al cargar el usuario" });
   }
 });
 
@@ -863,39 +1023,6 @@ app.delete("/comentarios/:id", auth, async (req, res) => {
   } catch (err) {
     console.error("Error en DELETE /comentarios/:id:", err);
     return res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-// -------------------- USUARIOS --------------------
-// Obtener usuario por ID (NUEVO ENDPOINT)
-app.get("/users/:id", auth, async (req, res) => {
-  try {
-    const userId = req.params.id;
-    const currentUserId = req.user.id;
-    const currentUserRol = req.user.rol;
-
-    // Solo permitir al propio usuario o a profesores
-    if (parseInt(userId) !== currentUserId && currentUserRol !== 'profesor') {
-      return res.status(403).json({ success: false, message: "Acceso denegado" });
-    }
-
-    const [rows] = await db.query(`
-      SELECT id, nombre, email, rol, created_at 
-      FROM usuarios 
-      WHERE id = ?
-    `, [userId]);
-    
-    if (!rows.length) {
-      return res.status(404).json({ success: false, message: "Usuario no encontrado" });
-    }
-
-    return res.json({ 
-      success: true, 
-      user: rows[0]
-    });
-  } catch (err) {
-    console.error("Error en GET /users/:id:", err);
-    return res.status(500).json({ success: false, message: "Error al cargar el usuario" });
   }
 });
 

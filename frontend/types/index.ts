@@ -45,14 +45,14 @@ export interface Tarea {
   fecha_creacion: string;
   fecha_entrega?: string;
   archivo_url?: string;
-  materia_nombre?: string; // Añadido para compatibilidad
+  materia_nombre?: string;
 }
 
 export interface TareaResponse {
   success: boolean;
   message?: string;
   tareas?: Tarea[];
-  tarea?: Tarea; // Añadido para getTareaById
+  tarea?: Tarea;
 }
 
 // Tipos de entrega
@@ -76,7 +76,7 @@ export interface EntregaResponse {
   success: boolean;
   message?: string;
   entregas?: Entrega[];
-  entrega?: Entrega; // Añadido para getEntregaById
+  entrega?: Entrega;
 }
 
 // Tipos de comentario
@@ -107,6 +107,17 @@ export interface LoginCredentials {
 export interface RegisterData extends LoginCredentials {
   nombre: string;
   rol: 'estudiante' | 'profesor';
+}
+
+// Perfil (NUEVOS TIPOS)
+export interface UpdateUserData {
+  nombre?: string;
+  email?: string;
+}
+
+export interface ChangePasswordData {
+  current_password: string;
+  new_password: string;
 }
 
 // Materias
@@ -150,7 +161,7 @@ export interface ButtonProps {
   onPress: () => void;
   loading?: boolean;
   disabled?: boolean;
-  type?: 'primary' | 'secondary' | 'danger';
+  type?: 'primary' | 'secondary' | 'danger' | 'outline' | 'text';
   style?: any;
 }
 
@@ -168,7 +179,7 @@ export interface InputProps {
   autoComplete?: 'email' | 'password' | 'name' | 'tel' | 'off' | string;
   editable?: boolean;
   maxLength?: number;
-  style?: any; // ✅ AÑADIDO: Para aceptar estilos personalizados
+  style?: any;
 }
 
 export interface CardProps {
@@ -203,6 +214,7 @@ export type RootStackParamList = {
   Perfil: undefined;
   DetalleEntrega: { entregaId: number };
   CalificarEntrega: { entregaId: number };
+  Chatbot: undefined;
 };
 
 // Props para screens
@@ -260,4 +272,12 @@ export interface StatsResponse {
   totalTareas?: number;
   totalEntregas?: number;
   promedioCalificacion?: number;
+}
+
+// ============ TIPOS PARA CONTEXT ============
+export interface AuthContextType {
+  user: User | null;
+  loading: boolean;
+  signOut: () => Promise<void>;
+  updateUserContext: (updatedUser: User) => void;
 }

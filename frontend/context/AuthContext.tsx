@@ -12,6 +12,7 @@ interface AuthContextType {
   token: string | null; 
   signIn: (token: string, userData: User) => void; 
   signOut: () => void;
+  updateUserContext: (updatedUser: User) => void; // AÑADIDO
 }
 
 // 2. Creación del Contexto
@@ -80,6 +81,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  // FUNCIÓN NUEVA: Actualizar datos del usuario en el contexto
+  const updateUserContext = useCallback(async (updatedUser: User) => {
+    try {
+      // Actualizar el estado local
+      setUser(updatedUser);
+      
+      // Actualizar en AsyncStorage
+      await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+      
+      console.log('Usuario actualizado en contexto:', updatedUser);
+    } catch (error) {
+      console.error('Error al actualizar usuario en contexto:', error);
+      throw error;
+    }
+  }, []);
+
   const value = {
     isLoggedIn,
     loading,
@@ -87,6 +104,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     token, 
     signIn,
     signOut,
+    updateUserContext, // AÑADIDO AL VALUE
   };
 
   return (

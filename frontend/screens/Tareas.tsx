@@ -16,9 +16,9 @@ import Input from '../components/Input';
 import Loading from '../components/Loading';
 import { 
   getTareasByMateria,
-  entregarTarea, // 🔥 Ahora está en api.ts
+  entregarTarea,
   getComentariosByTarea,
-  createComentario, // 🔥 CAMBIADO: createComentario en lugar de crearComentario
+  createComentario,
   eliminarComentario,
   eliminarTarea 
 } from '../api';
@@ -78,7 +78,6 @@ const TareasScreen: React.FC<TareasScreenProps> = ({ route, navigation }) => {
       return;
     }
 
-    // 🔥 Usa la función importada de api.ts
     const result = await entregarTarea(tareaId, entregaText);
     
     if (result.success) {
@@ -96,7 +95,6 @@ const TareasScreen: React.FC<TareasScreenProps> = ({ route, navigation }) => {
       return;
     }
 
-    // 🔥 CORREGIDO: Usa createComentario (en inglés)
     const result = await createComentario(tareaId, { comentario: nuevoComentario });
     
     if (result.success) {
@@ -156,132 +154,148 @@ const TareasScreen: React.FC<TareasScreenProps> = ({ route, navigation }) => {
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.title}>{materia.nombre}</Text>
-      <Text style={styles.subtitle}>{materia.descripcion || 'Sin descripción'}</Text>
-
-      {user?.rol === 'profesor' && materia.profesor_id === user.id && (
-        <Button
-          title="➕ Crear tarea en esta materia"
-          onPress={() => navigation.navigate('CrearTarea')}
-          style={styles.marginBottom10}
-        />
-      )}
-
-      {tareas.length === 0 ? (
-        <View style={styles.marginTop20}>
-          <Text style={[styles.text, styles.textCenter]}>
-            No hay tareas en esta materia
-          </Text>
+    <View style={styles.screenContainer}>
+      <ScrollView 
+        contentContainerStyle={styles.screenScrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Encabezado */}
+        <View style={styles.screenHeader}>
+          <Text style={styles.screenTitle}>{materia.nombre}</Text>
+          <Text style={styles.screenSubtitle}>{materia.descripcion || 'Sin descripción'}</Text>
         </View>
-      ) : (
-        tareas.map((tarea) => (
-          <Card
-            key={tarea.id}
-            title={tarea.titulo}
-            description={`${tarea.descripcion || 'Sin descripción'}\nEntrega: ${tarea.fecha_entrega || 'Sin fecha límite'}`}
-          >
-            {user?.rol === 'profesor' && materia.profesor_id === user.id && (
-              <Button
-                title="🗑️ Eliminar tarea"
-                onPress={() => handleEliminarTarea(tarea.id)}
-                type="danger"
-                style={styles.marginBottom10}
-              />
-            )}
 
-            {user?.rol === 'estudiante' && (
-              <>
-                <Text style={[styles.inputLabel, styles.marginTop20]}>Tu entrega:</Text>
-                <TextInput
-                  style={[
-                    styles.input,
-                    styles.inputMultiline
-                  ]}
-                  multiline
-                  placeholder="Escribe tu respuesta aquí..."
-                  value={entregaText}
-                  onChangeText={setEntregaText}
-                />
-                <Button
-                  title="📤 Entregar tarea"
-                  onPress={() => handleEntregar(tarea.id)}
-                  style={styles.marginTop20}
-                />
-              </>
-            )}
+        {user?.rol === 'profesor' && materia.profesor_id === user.id && (
+          <Button
+            title="➕ Crear tarea en esta materia"
+            onPress={() => navigation.navigate('CrearTarea')}
+            style={styles.marginBottom20}
+          />
+        )}
 
-            <TouchableOpacity 
-              onPress={() => {
-                setTareaActiva(tareaActiva === tarea.id ? null : tarea.id);
-                if (tareaActiva !== tarea.id) {
-                  loadComentarios(tarea.id);
-                }
-              }}
-              style={{ marginTop: 20 }}
+        {tareas.length === 0 ? (
+          <View style={[styles.centerContainer, styles.marginTop20]}>
+            <Text style={[styles.text, styles.textCenter]}>
+              No hay tareas en esta materia
+            </Text>
+          </View>
+        ) : (
+          tareas.map((tarea) => (
+            <Card
+              key={tarea.id}
+              title={tarea.titulo}
+              description={`${tarea.descripcion || 'Sin descripción'}\nEntrega: ${tarea.fecha_entrega || 'Sin fecha límite'}`}
+              style={styles.marginBottom15}
             >
-              <Text style={{ color: '#3498db', fontWeight: '600' }}>
-                {tareaActiva === tarea.id ? '▼' : '▶'} Comentarios
-              </Text>
-            </TouchableOpacity>
+              {user?.rol === 'profesor' && materia.profesor_id === user.id && (
+                <Button
+                  title="🗑️ Eliminar tarea"
+                  onPress={() => handleEliminarTarea(tarea.id)}
+                  type="danger"
+                  style={styles.marginBottom10}
+                />
+              )}
 
-            {tareaActiva === tarea.id && (
-              <View style={{ marginTop: 10 }}>
-                {comentarios[tarea.id]?.map((comentario) => (
-                  <View 
-                    key={comentario.id} 
+              {user?.rol === 'estudiante' && (
+                <>
+                  <Text style={[styles.inputLabel, styles.marginTop15]}>Tu entrega:</Text>
+                  <TextInput
                     style={[
-                      styles.card, 
-                      { 
-                        marginVertical: 5,
-                        backgroundColor: comentario.usuario_id === user?.id ? '#e8f4fd' : 'white'
-                      }
+                      styles.input,
+                      styles.inputMultiline,
+                      styles.marginTop5
                     ]}
-                  >
-                    <View style={[styles.horizontalLayout, styles.justifyContentBetween]}>
-                      <Text style={{ fontWeight: '600' }}>
-                        {comentario.usuario_nombre} ({comentario.rol})
-                      </Text>
-                      <Text style={{ fontSize: 12, color: '#7f8c8d' }}>
-                        {new Date(comentario.creado_en).toLocaleDateString()}
-                      </Text>
-                    </View>
-                    <View style={styles.marginTop5}>
-                      <Text style={styles.text}>
-                        {comentario.comentario}
-                      </Text>
-                    </View>
-                    {(comentario.usuario_id === user?.id || user?.rol === 'profesor') && (
-                      <TouchableOpacity
-                        onPress={() => handleEliminarComentario(comentario.id, tarea.id)}
-                        style={{ alignSelf: 'flex-end', marginTop: 5 }}
-                      >
-                        <Text style={{ color: '#e74c3c', fontSize: 12 }}>Eliminar</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                ))}
-
-                <View style={styles.marginTop10}>
-                  <Input
-                    label="Agregar comentario"
-                    value={nuevoComentario}
-                    onChangeText={setNuevoComentario}
-                    placeholder="Escribe un comentario..."
                     multiline
+                    placeholder="Escribe tu respuesta aquí..."
+                    value={entregaText}
+                    onChangeText={setEntregaText}
                   />
                   <Button
-                    title="Comentar"
-                    onPress={() => handleComentar(tarea.id)}
-                    type="secondary"
+                    title="📤 Entregar tarea"
+                    onPress={() => handleEntregar(tarea.id)}
+                    style={styles.marginTop15}
                   />
+                </>
+              )}
+
+              <TouchableOpacity 
+                onPress={() => {
+                  setTareaActiva(tareaActiva === tarea.id ? null : tarea.id);
+                  if (tareaActiva !== tarea.id) {
+                    loadComentarios(tarea.id);
+                  }
+                }}
+                style={styles.marginTop15}
+              >
+                <Text style={[styles.text, styles.fontWeight600, styles.textPrimary]}>
+                  {tareaActiva === tarea.id ? '▼' : '▶'} Comentarios
+                </Text>
+              </TouchableOpacity>
+
+              {tareaActiva === tarea.id && (
+                <View style={styles.marginTop10}>
+                  {comentarios[tarea.id]?.map((comentario) => (
+                    <View 
+                      key={comentario.id} 
+                      style={[
+                        styles.card, 
+                        styles.marginVertical5,
+                        comentario.usuario_id === user?.id && styles.backgroundColorLightBlue
+                      ]}
+                    >
+                      <View style={[styles.horizontalLayout, styles.justifyContentBetween]}>
+                        <Text style={[styles.text, styles.fontWeight600]}>
+                          {comentario.usuario_nombre} ({comentario.rol})
+                        </Text>
+                        <Text style={[styles.textSmall, styles.textDate]}>
+                          {new Date(comentario.creado_en).toLocaleDateString()}
+                        </Text>
+                      </View>
+                      
+                      <View style={styles.marginTop5}>
+                        <Text style={styles.text}>
+                          {comentario.comentario}
+                        </Text>
+                      </View>
+                      
+                      {(comentario.usuario_id === user?.id || user?.rol === 'profesor') && (
+                        <TouchableOpacity
+                          onPress={() => handleEliminarComentario(comentario.id, tarea.id)}
+                          style={[styles.marginTop5, styles.alignSelfEnd]}
+                        >
+                          <Text style={[styles.textSmall, styles.textDanger]}>
+                            Eliminar
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  ))}
+
+                  <View style={styles.marginTop10}>
+                    <Input
+                      label="Agregar comentario"
+                      value={nuevoComentario}
+                      onChangeText={setNuevoComentario}
+                      placeholder="Escribe un comentario..."
+                      multiline
+                    />
+                    <Button
+                      title="Comentar"
+                      onPress={() => handleComentar(tarea.id)}
+                      type="secondary"
+                      style={styles.marginTop10}
+                    />
+                  </View>
                 </View>
-              </View>
-            )}
-          </Card>
-        ))
-      )}
-    </ScrollView>
+              )}
+            </Card>
+          ))
+        )}
+        
+        {/* Espacio al final */}
+        <View style={{height: 30}} />
+      </ScrollView>
+    </View>
   );
 };
 
